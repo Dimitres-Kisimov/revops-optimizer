@@ -1,0 +1,81 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install numpy scipy matplotlib openpyxl python-pptx ruff pytest
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+
+      - name: Lint (ruff)
+        run: ruff check .
+
+      - name: Generate synthetic data
+        run: |
+          python data/generate_skus.py
+          python data/generate_history.py
+
+      - name: Smoke — run the CLI pipeline
+        run: python -m revops --quiet
+
+      - name: Build deliverables
+        run: python -m revops.report
+
+      - name: Build Power BI star schema
+        run: python powerbi/build_star.py
+
+      - name: Build web dashboard data
+        run: python web/build_data.py
+
+      - name: Tests
+        run: pytest -q
+
+      - name: Validate deliverables + Power BI CSVs exist and parse
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          required = [
+              "deliverables/prescription.json",
+              "deliverables/actions.csv",
+              "deliverables/optimization_workbook.xlsx",
+              "deliverables/executive_review.pdf",
+              "powerbi/data/fact_prescription.csv",
+              "powerbi/data/dim_sku.csv",
+              "powerbi/data/dim_category.csv",
+              "powerbi/data/dim_date.csv",
+              "powerbi/data/kpi_headline.csv",
+              "web/data.js",
+          ]
+          missing = [p for p in required if not Path(p).exists()]
+          assert not missing, f"missing artefacts: {missing}"
+
+          plan = json.loads(Path("deliverables/prescription.json").read_text(encoding="utf-8"))
+          up = plan["expected_uplift"]
+          assert up["total_expected_uplift_eur"] > 0, "non-positive uplift"
+          assert up["assortment_milp_vs_greedy_eur"] > 0, "MILP did not beat greedy"
+          print("OK — total uplift EUR %.0f, MILP-vs-greedy EUR %.0f"
+                % (up["total_expected_uplift_eur"], up["assortment_milp_vs_greedy_eur"]))
+          PY
