@@ -1,0 +1,9 @@
+category,n_skus,avg_elasticity,promo_allocation_eur
+abrasives,32,-1.782,2381.5
+chemicals,29,-1.643,2507.1
+electrical,23,-1.522,6255.72
+fasteners,59,-1.822,0.0
+hand tools,23,-1.335,7502.13
+plumbing,26,-1.4,7417.55
+power tools,19,-1.466,12748.35
+ppe,29,-2.046,1187.64

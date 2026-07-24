@@ -1,0 +1,12 @@
+metric,value
+total_expected_uplift_eur,159966.19
+pricing_uplift_annual_eur,35220.36
+promo_incremental_eur,18583.8
+assortment_milp_vs_greedy_eur,106162.03
+baseline_annual_margin_eur,927129.77
+forecast_mase,0.7538
+seasonal_naive_mase,1.0086
+decline_roc_auc,0.9943
+capital_budget_eur,60000.0
+capital_used_eur,56152.48
+promo_budget_eur,40000.0
