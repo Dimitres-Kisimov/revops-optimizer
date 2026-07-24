@@ -1,0 +1,162 @@
+# Optimization models
+
+Four decisions, four optimization formulations. Each is a real program solved
+with SciPy (HiGHS for the MILP, SLSQP for the promo), not a heuristic dressed up
+as one. This document writes out the maths and, at the end, the honest cases
+where a greedy baseline ties the optimizer.
+
+---
+
+## 1. Assortment — a 0/1 knapsack MILP (two constraints)
+
+**Decision.** Which SKUs to carry, to maximize annual gross margin under a
+working-capital budget *and* a shelf-space budget, keeping a minimum breadth per
+category.
+
+Let `x_i ∈ {0,1}` be "carry SKU *i*". With margin `m_i` (annual €), capital
+`w_i` (average inventory value at cost), shelf cube `s_i`, categories `C`:
+
+```
+maximize    Σ_i  m_i · x_i
+subject to  Σ_i  w_i · x_i  ≤  B        (working-capital budget)
+            Σ_i  s_i · x_i  ≤  S        (shelf-capacity budget, m³)
+            Σ_{i∈c} x_i     ≥  k_c   ∀c (minimum breadth per category)
+            x_i ∈ {0,1}
+```
+
+This is a **multidimensional 0/1 knapsack** — NP-hard in general, solved to
+optimality here by branch-and-bound in HiGHS via `scipy.optimize.milp`. HiGHS
+minimizes, so we pass `c = -m`. The category-breadth rows make it more than a
+plain knapsack: you cannot empty a category to free capital.
+
+`w_i` and `s_i` both come from the same physical stock estimate — a cycle plus a
+1.65σ safety buffer:
+
+```
+q_i = avg_demand_i · max(0.5, lead_time_i)/2  +  1.65 · demand_std_i
+w_i = q_i · unit_cost_i           s_i = q_i · shelf_m3_per_unit_i
+```
+
+**Why two constraints matter.** With a single capital constraint, ranking by
+GMROI (`margin / capital`) and filling the budget is *optimal* — the greedy tie
+below. Add the shelf constraint and the problem becomes genuinely
+two-dimensional: a SKU cheap in capital can be bulky on the shelf, so no single
+ratio orders the items correctly. That is exactly where the MILP earns its keep
+(a five-/six-figure €/yr gap over greedy in this dataset).
+
+---
+
+## 2. Inventory — the newsvendor critical fractile + safety stock
+
+**Decision.** For each carried SKU, the order-up-to level `S` that balances the
+cost of a stockout against the cost of overstock.
+
+One period, demand `D ~ Normal(μ, σ)`. Underage cost `c_u` = lost unit margin;
+overage cost `c_o` = one period's holding cost on an unsold unit. Expected cost
+`C(S) = c_o·E[(S−D)⁺] + c_u·E[(D−S)⁺]`. Differentiating and setting `C'(S)=0`:
+
+```
+P(D ≤ S*) = c_u / (c_u + c_o)   ≡   the critical fractile  CF
+S*        = μ + z_CF · σ,        z_CF = Φ⁻¹(CF)
+```
+
+Intuition: stock up to the demand quantile where the marginal expected cost of
+one more unit flips sign. High-margin, cheap-to-hold SKUs get `CF → 1` (hold
+plenty); thin-margin, expensive-to-hold SKUs get `CF → 0.5` and lean stock.
+
+On top of the single-period optimum we set a **service-level safety stock**
+covering demand *and* lead-time variability:
+
+```
+ss  = z_SL · sqrt( L·σ²  +  μ²·σ_L² )        z_SL = Φ⁻¹(service_level)
+ROP = μ·L + ss
+```
+
+and report expected units short per period,
+`E[(D−S)⁺] = σ·(φ(k) − k·(1−Φ(k)))` with `k = (S−μ)/σ`, which drives the
+OTIF-style fill-rate KPI. A service-vs-cost frontier sweeps the service level so
+the planner sees the trade-off, not just one point.
+
+---
+
+## 3. Pricing — constant-elasticity profit max (Lerner) with a guardrail
+
+**Decision.** A recommended price per SKU that maximizes unit-margin × volume,
+clamped to a commercial band.
+
+Constant-elasticity demand `Q(P) = Q₀·(P/P₀)^e`, `e < 0`. Profit
+`π(P) = (P − c)·Q(P)`. Setting `dπ/dP = 0` gives the **Lerner** optimum:
+
+```
+(P* − c)/P* = −1/e      ⇒      P* = c · |e| / (|e| − 1)     (finite only if |e| > 1)
+```
+
+The markup is `|e|/(|e|−1)`: the *less* elastic the SKU (|e| near 1), the fatter
+the optimal markup; the more elastic, the closer price sits to cost. Two guards
+make it deployable:
+
+- **Inelastic SKUs (|e| ≤ 1)** have no interior optimum (profit rises without
+  bound in the model), so they are flagged and pushed to the top of the
+  guardrail band rather than "priced to infinity".
+- **The guardrail** clamps every recommendation to `[P₀(1−g), P₀(1+g)]`
+  (default `g = 15%`), so the model never proposes a commercially absurd jump.
+
+The elasticity `e` fed here is the *estimated* one from the predictive layer,
+not the true generating value — the whole point of predict→optimize.
+
+---
+
+## 4. Promotion — concave budget allocation (KKT / water-filling)
+
+**Decision.** Split a promo budget across categories to maximize incremental
+margin under diminishing returns.
+
+Each category's incremental margin from spend `x_c` is concave and saturating:
+
+```
+u_c(x_c) = a_c · (1 − e^{−b_c x_c})           a_c, b_c > 0
+```
+
+`a_c` (saturation) scales with the category's margin headroom; `b_c`
+(responsiveness) with its average elasticity magnitude. The program:
+
+```
+maximize   Σ_c a_c (1 − e^{−b_c x_c})
+subject to Σ_c x_c ≤ B,   x_c ≥ 0
+```
+
+is smooth and concave, so the KKT conditions are necessary *and* sufficient.
+Stationarity gives, for every category funded at the interior:
+
+```
+a_c b_c e^{−b_c x_c} = λ    (a common shadow price λ on the budget)
+⇒  x_c = max( 0,  (1/b_c) · ln(a_c b_c / λ) )
+```
+
+This is **water-filling**: pour budget where the marginal return `a_c b_c
+e^{−b_c x_c}` is highest; as a category fills, its marginal return falls until it
+meets the common level `λ`; the budget binds when `Σ x_c = B`, which pins `λ`.
+The solver of record is `scipy.optimize.minimize(method="SLSQP")` with the
+analytic gradient; the water-filling identity is the cross-check (and the exact
+formula the web dashboard's what-if slider re-solves live via a bisection on
+`λ`).
+
+---
+
+## Honest notes — when greedy ties the MILP
+
+- **Assortment with only the capital constraint.** A single linear budget makes
+  the LP relaxation integral at all but one "fractional" item, so GMROI-ranked
+  greedy is optimal up to that last item. The MILP's advantage appears *only*
+  once the second (shelf) constraint binds — this is why the default ships with
+  a shelf budget, and why the reported MILP-vs-greedy gap collapses to near-zero
+  if you relax it (try `--shelf-capacity-m3 500`).
+- **Pricing** has a closed form; there is no "optimizer vs heuristic" story —
+  the value is the elasticity *estimate* and the guardrail discipline.
+- **Promo** is concave, so gradient ascent and water-filling agree to solver
+  tolerance; "beats an even split" is the honest, modest claim (a few % of the
+  budget's incremental margin), not a headline miracle.
+
+The models are the **smallest credible version** of each — real formulations,
+solved exactly, on synthetic-but-structured data. See `METHODOLOGY.md` for how
+the AI models feed them and `USE_CASE.md` for the end-to-end narrative.
