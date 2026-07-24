@@ -14,6 +14,11 @@ project.
 I wrote it as part of an internship application in data & AI analytics. It runs
 end to end on synthetic-but-structured data with no API keys and no cloud.
 
+**Business case:** on the seeded dataset the plan is worth a measured **~€160k/year**
+of margin uplift for a mid-size industrial distributor — see
+[`docs/BUSINESS_CASE.md`](docs/BUSINESS_CASE.md) for the situation, the quantified
+problem and the ROI.
+
 ![Uplift waterfall — baseline to optimized](docs/img/uplift_waterfall.png)
 
 ## What it does, concretely
