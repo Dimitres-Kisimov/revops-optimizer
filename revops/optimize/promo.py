@@ -69,7 +69,7 @@ def optimize_promo(skus: list[SKU], budget: float) -> PromoResult:
     inc = float(np.sum(a * (1 - np.exp(-b * x))))
     even = float(np.sum(a * (1 - np.exp(-b * x0))))
     return PromoResult(
-        allocation={c: round(float(v), 2) for c, v in zip(cats, x)},
+        allocation={c: round(float(v), 2) for c, v in zip(cats, x, strict=False)},
         incremental_margin_eur=round(inc, 2), budget_eur=budget,
         even_split_margin_eur=round(even, 2),
         uplift_vs_even_eur=round(inc - even, 2))
