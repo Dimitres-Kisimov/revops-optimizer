@@ -110,7 +110,7 @@ def _decision_cards(assort, prices, promo, inv, risks, forecasts,
 
 
 def prescribe(budget: float = 60_000.0,
-              shelf_capacity_m3: float | None = 500.0,
+              shelf_capacity_m3: float | None = 10.0,
               service_level: float = 0.95,
               promo_budget: float = 40_000.0,
               price_guardrail: float = 0.15,
@@ -150,6 +150,9 @@ def prescribe(budget: float = 60_000.0,
         "pricing_uplift_annual_eur": round(pricing_uplift_annual, 2),
         "promo_incremental_eur": round(promo.incremental_margin_eur, 2),
         "assortment_uplift_vs_greedy_eur": round(assort.milp_uplift_vs_greedy_eur, 2),
+        # explicit alias — the MILP-vs-greedy gap is the headline that shows the
+        # two-constraint (capital + shelf) optimizer earning its keep.
+        "assortment_milp_vs_greedy_eur": round(assort.milp_uplift_vs_greedy_eur, 2),
         "total_expected_uplift_eur": round(
             pricing_uplift_annual + promo.incremental_margin_eur
             + assort.milp_uplift_vs_greedy_eur, 2),

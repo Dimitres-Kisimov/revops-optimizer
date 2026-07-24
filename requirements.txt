@@ -1,6 +1,8 @@
 # revops-optimizer — core is stdlib + scipy/numpy. Optional extras for outputs.
 numpy>=1.24
 scipy>=1.9        # milp (HiGHS), linprog, minimize — the optimization engine
-matplotlib>=3.8   # charts (optional)
+matplotlib>=3.8   # charts + executive PDF deck (optional)
 openpyxl>=3.1     # Excel deliverables (optional)
+python-pptx>=0.6  # PowerPoint deck (optional; skipped gracefully if absent)
+torch>=2.0        # global demand forecaster (CPU is fine)
 # ruff, pytest for dev

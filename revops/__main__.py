@@ -46,6 +46,8 @@ def _headline(p: dict) -> str:
         "-" * 68,
         f" SKUs carried           {a['n_carried']} of {a['n_carried'] + a['n_dropped']}"
         f"   (capital EUR {a['capital_used_eur']:,.0f} / {a['budget_eur']:,.0f})",
+        f" MILP vs greedy         EUR {a['milp_uplift_vs_greedy_eur']:>12,.0f} / year"
+        f"   (two constraints: capital + shelf)",
         f" Price moves            {pr['n_moves']} SKUs repriced within guardrail",
         f" Promo split            {promo_split}",
         "-" * 68,
@@ -70,7 +72,8 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="revops", description=__doc__)
     ap.add_argument("--budget", type=float, default=60_000.0,
                     help="working-capital budget for the assortment MILP")
-    ap.add_argument("--shelf-capacity-m3", type=float, default=500.0)
+    ap.add_argument("--shelf-capacity-m3", type=float, default=10.0,
+                    help="shelf-space budget (m3) — the 2nd MILP knapsack dim")
     ap.add_argument("--service-level", type=float, default=0.95)
     ap.add_argument("--promo-budget", type=float, default=40_000.0)
     ap.add_argument("--price-guardrail", type=float, default=0.15)
