@@ -104,5 +104,5 @@ techniques actually get used in.
 
 ---
 
-Built and maintained by Dimitres Kisimov · MIT licensed · synthetic data, no
+Built and maintained by Dimitres Kisimov · © 2026 Dimitres Kisimov — all rights reserved; published for portfolio review. See LICENSE. · synthetic data, no
 keys, runs offline.
