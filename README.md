@@ -11,6 +11,8 @@ and "optimization" projects that assume their inputs fall from the sky. The
 interesting engineering is the seam between them, so I made that seam the whole
 project.
 
+![RevOps Optimizer web dashboard — KPI tiles, uplift waterfall, assortment margin and promo allocation](docs/img/dashboard.png)
+
 I wrote it as part of an internship application in data & AI analytics. It runs
 end to end on synthetic-but-structured data with no API keys and no cloud.
 
