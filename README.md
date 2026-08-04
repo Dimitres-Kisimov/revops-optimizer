@@ -46,6 +46,20 @@ range decision drops them first. The maths is written out in
 [`docs/OPTIMIZATION_MODELS.md`](docs/OPTIMIZATION_MODELS.md) and the handoff in
 [`docs/METHODOLOGY.md`](docs/METHODOLOGY.md).
 
+### Forecast uncertainty → service level (fill rate)
+
+A point forecast is not enough to set inventory — a planner sets a *service
+level*. So the forecaster's own one-step residuals (how wrong it actually is)
+become the demand-uncertainty: standardized, pooled, and swept from an 80%→99%
+target to trade off safety stock, holding cost, expected fill rate and expected
+stockout cost. On the seeded assortment the cost-minimising recommendation is a
+**96% target ≈ 99.3% expected unit fill rate**. The honest catch: the residuals
+are **fat-tailed** — the 95% quantile sits at ~2.15σ, not the textbook 1.64σ — so
+a Gaussian safety stock would under-provision. Cost rates are labelled
+illustrative, not a guarantee.
+
+![Forecast-uncertainty service-level curve — illustrative cost vs target service level, and expected unit fill rate](deliverables/service_level_curve.svg)
+
 ## Run it
 
 ```bash
@@ -65,9 +79,11 @@ Knobs: `--budget`, `--shelf-capacity-m3`, `--service-level`, `--promo-budget`,
 ## What comes out
 
 - **`deliverables/`** — an executive PDF/PPTX deck (waterfall, assortment
-  before/after, inventory frontier, price-move distribution, promo allocation, a
-  model-quality slide, recommended actions), a styled Excel workbook, and
-  `actions.csv` (per-SKU reorder + reprice).
+  before/after, inventory frontier, the forecast-uncertainty service-level curve,
+  price-move distribution, promo allocation, a model-quality slide, recommended
+  actions), a styled Excel workbook (with a `ServiceLevel` sheet), `actions.csv`
+  (per-SKU reorder + reprice), and the service-level curve as
+  `service_level_curve.csv` + a hand-drawn `service_level_curve.svg`.
 - **`powerbi/`** — a star schema (`fact_prescription` + `dim_sku/category/date` +
   a scalar KPI table) with the KPIs written as real DAX, and a build spec for the
   three report pages. No tenant needed to produce or review it — that's stated
@@ -93,6 +109,13 @@ narrative.
 - **The models are the smallest credible version of each** — a small global MLP
   forecaster, a from-scratch ridge elasticity, a from-scratch logistic decline
   classifier. The goal was a clear, honest pipeline, not a leaderboard.
+- **The service-level curve's cost rates are illustrative.** Overage is one
+  month's holding at each SKU's own rate; underage is the lost unit margin (times
+  an optional goodwill/expedite penalty, default 1×). It is a single-period
+  monthly model on synthetic data — the *recommended* service level and fill rate
+  are what that model computes, not a guaranteed field outcome. The empirical
+  prediction intervals, though, are a genuine, deterministic read of the
+  forecaster's own error.
 
 ## A note on fit
 

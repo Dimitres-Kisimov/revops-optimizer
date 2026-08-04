@@ -10,6 +10,7 @@ matters — exactly which optimizer input it feeds.
    PREDICT (learned)                       OPTIMIZE (unchanged core)
    ─────────────────                       ─────────────────────────
    demand forecaster   ──forecast μ──►     newsvendor S*, assortment margin m_i
+                       ──residuals───►     empirical service-level (fill-rate) curve
    elasticity ridge    ──ê per SKU───►     pricing Lerner markup P*
    decline classifier  ──risk r_i───►      demand haircut → assortment drops
 ```
@@ -34,6 +35,15 @@ naive ~1.01) — a real but modest edge, reported honestly, not cherry-picked.
 average** in a copy of the SKU records handed to (a) the newsvendor, so
 order-up-to and safety stock track where demand is *going*, and (b) the
 assortment MILP, so carry/drop margins are computed on forecast volume.
+
+**Also feeds — the honest one.** The forecaster's own *one-step residuals*
+(`actual − forecast`, teacher-forced across the history) are the empirical
+demand-uncertainty. Standardized per SKU and pooled, their quantiles drive a
+service-level (fill-rate) curve instead of a bell-curve assumption — see
+`OPTIMIZATION_MODELS.md` §2. On this data the residuals are visibly fat-tailed
+(the 95% quantile sits at ~2.15σ, not the textbook 1.64σ), so a Gaussian safety
+stock would under-provision. This is exactly why the uncertainty should come from
+the model that will actually be wrong, not from the raw historical spread.
 
 ---
 

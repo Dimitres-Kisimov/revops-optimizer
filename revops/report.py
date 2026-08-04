@@ -73,6 +73,32 @@ def _write_json(plan: dict, outdir: Path) -> Path:
     return p
 
 
+def _service_level_points(plan: dict):
+    """Reconstruct ServiceLevelPoint objects + the recommendation from the plan
+    dict, or (None, None) if the layer is absent (older plans)."""
+    inv = plan["plan"]["inventory"]
+    rows = inv.get("service_level_curve")
+    reco = inv.get("recommended_service_level")
+    if not rows or not reco:
+        return None, None
+    try:
+        from .optimize.service_level import ServiceLevelPoint
+    except Exception:
+        return None, None
+    return [ServiceLevelPoint(**r) for r in rows], reco
+
+
+def _write_service_level(plan: dict, outdir: Path) -> tuple[Path | None, Path | None]:
+    """Emit the deterministic service-level curve deliverables (CSV + SVG)."""
+    curve, reco = _service_level_points(plan)
+    if curve is None:
+        return None, None
+    from .optimize.service_level import render_curve_svg, write_curve_csv
+    csv_p = write_curve_csv(curve, outdir / "service_level_curve.csv")
+    svg_p = render_curve_svg(curve, reco, outdir / "service_level_curve.svg")
+    return csv_p, svg_p
+
+
 def _write_actions_csv(plan: dict, outdir: Path) -> Path:
     """Per-SKU actionable list: reorder qty (order-up-to) + price change."""
     p = outdir / "actions.csv"
@@ -186,6 +212,29 @@ def _write_workbook(plan: dict, outdir: Path) -> Path | None:
     for li in plan["plan"]["inventory"]["lines"]:
         ws.append([li[c] for c in cols])
     autosize(ws)
+
+    # --- Service level (forecast-uncertainty curve) ------------------------
+    curve, reco = _service_level_points(plan)
+    if curve is not None:
+        ws = wb.create_sheet("ServiceLevel")
+        ws["A1"] = "Forecast-uncertainty -> service-level curve (illustrative cost)"
+        ws["A1"].font = title_font
+        ws.append([f"Recommended target service level: "
+                   f"{reco['service_level'] * 100:.0f}%  |  expected fill rate "
+                   f"{reco['expected_fill_rate'] * 100:.1f}%  |  total illustrative "
+                   f"cost EUR {reco['total_cost_eur_month']:,.0f}/mo"])
+        ws.append([])
+        cols = ["service_level", "empirical_z", "gaussian_z", "safety_stock_units",
+                "safety_capital_eur", "holding_cost_eur_month", "expected_fill_rate",
+                "expected_stockout_units_month", "expected_stockout_cost_eur_month",
+                "total_cost_eur_month"]
+        hdr_row = ws.max_row + 1
+        ws.append(cols)
+        style_header(ws, len(cols), hdr_row)
+        for pt in curve:
+            d = pt.__dict__
+            ws.append([d[c] for c in cols])
+        autosize(ws)
 
     # --- Pricing -----------------------------------------------------------
     ws = wb.create_sheet("Pricing")
@@ -333,6 +382,40 @@ def _slide_frontier(fig, plan: dict) -> None:
     ax.set_axisbelow(True)
 
 
+def _slide_service_level(fig, plan: dict) -> None:
+    ax = fig.add_subplot(111)
+    curve, reco = _service_level_points(plan)
+    if curve is None:
+        ax.text(0.5, 0.5, "Service-level curve unavailable",
+                ha="center", va="center", color=GREY)
+        ax.axis("off")
+        return
+    x = [p.service_level * 100 for p in curve]
+    ax.plot(x, [p.total_cost_eur_month for p in curve], "-", color=INK, lw=2.6,
+            label="Total illustrative cost")
+    ax.plot(x, [p.holding_cost_eur_month for p in curve], "-", color=BLUE, lw=2,
+            label="Safety-stock holding")
+    ax.plot(x, [p.expected_stockout_cost_eur_month for p in curve], "--",
+            color=PINK, lw=2, label="Expected stockout")
+    rx = reco["service_level"] * 100
+    ax.axvline(rx, color=INK, ls=":", lw=1.2, alpha=0.6)
+    ymin = min(p.total_cost_eur_month for p in curve)
+    ax.annotate(f"recommend {rx:.0f}%\nfill rate "
+                f"{reco['expected_fill_rate'] * 100:.1f}%",
+                (rx, ymin), textcoords="offset points", xytext=(8, 18),
+                fontsize=9, color=INK, fontweight="bold")
+    ax.set_xlabel("Target service level (%)")
+    ax.set_ylabel("Illustrative cost (EUR / month)")
+    ax.set_title("Forecast-uncertainty service-level curve "
+                 f"(empirical {reco['empirical_z']:.2f}σ vs Gaussian "
+                 f"{reco['gaussian_z']:.2f}σ at reco)",
+                 fontsize=13, fontweight="bold", color=INK)
+    ax.legend(frameon=False, fontsize=9)
+    ax.spines[["top", "right"]].set_visible(False)
+    ax.yaxis.grid(True, color="#eef1f5")
+    ax.set_axisbelow(True)
+
+
 def _slide_price_moves(fig, plan: dict) -> None:
     ax = fig.add_subplot(111)
     changes = [li["price_change_pct"] for li in _carried_lines(plan)]
@@ -434,6 +517,7 @@ def _write_pdf(plan: dict, outdir: Path) -> Path | None:
         ("axes", _slide_waterfall),
         ("subplots", _slide_assortment),
         ("axes", _slide_frontier),
+        ("axes", _slide_service_level),
         ("axes", _slide_price_moves),
         ("axes", _slide_promo),
         ("subplots", _slide_model_quality),
@@ -494,9 +578,12 @@ def write_deliverables(plan: dict, outdir: str | Path = "deliverables") -> dict:
     """Write every deliverable and return {name: path or None}."""
     out = Path(outdir)
     out.mkdir(parents=True, exist_ok=True)
+    sl_csv, sl_svg = _write_service_level(plan, out)
     written = {
         "prescription.json": _write_json(plan, out),
         "actions.csv": _write_actions_csv(plan, out),
+        "service_level_curve.csv": sl_csv,
+        "service_level_curve.svg": sl_svg,
         "optimization_workbook.xlsx": _write_workbook(plan, out),
         "executive_review.pdf": _write_pdf(plan, out),
     }

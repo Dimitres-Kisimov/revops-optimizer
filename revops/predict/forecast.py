@@ -270,6 +270,43 @@ def backtest(history: dict[str, list[dict]] | None = None,
     }
 
 
+def one_step_residuals(model: ForecastModel,
+                       history: dict[str, list[dict]] | None = None
+                       ) -> dict[str, list[float]]:
+    """Teacher-forced one-step forecast residuals per SKU (actual - forecast).
+
+    Reuses the same feature/scale/predict primitives as ``backtest`` so the
+    numbers describe the *forecaster's own* error, not the raw historical
+    spread. For every month with full lags we forecast units[t] from the true
+    history up to t-1 and record (units[t] - forecast). These empirical
+    residuals are what the service-level layer turns into demand-uncertainty
+    (see ``revops.optimize.service_level``). Deterministic for a fixed model.
+    """
+    series = history if history is not None else load_history()
+    feats: list[list[float]] = []
+    index: list[tuple[str, float, float]] = []      # (sku, actual, scale)
+    order: list[str] = []
+    for sku, rows in series.items():
+        order.append(sku)
+        units = [r["units"] for r in rows]
+        labels = [r["month"] for r in rows]
+        scale = _scale_of(units)
+        for t in range(max(N_LAGS), len(units)):
+            feat = _features_at(units, labels, t, scale)
+            if feat is None:
+                continue
+            feats.append(feat)
+            index.append((sku, units[t], scale))
+
+    out: dict[str, list[float]] = {s: [] for s in order}
+    if feats:
+        preds = model._predict_scaled(np.asarray(feats, dtype=np.float64))
+        for (sku, actual, scale), scaled in zip(index, preds, strict=True):
+            pred = max(0.0, math.expm1(scaled) * scale)
+            out[sku].append(actual - pred)
+    return out
+
+
 def build_forecast_cache(model: ForecastModel | None = None,
                          history: dict[str, list[dict]] | None = None,
                          path: str | Path | None = None) -> Path:

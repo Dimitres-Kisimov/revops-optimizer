@@ -26,6 +26,7 @@ from .optimize.assortment import optimize_assortment
 from .optimize.inventory import plan_inventory
 from .optimize.pricing import optimize_prices
 from .optimize.promo import optimize_promo
+from .optimize.service_level import recommend_service_level, service_level_curve
 from .predict import elasticity as el
 from .predict import forecast as fc
 from .predict import risk as rk
@@ -54,7 +55,7 @@ def _adjusted_skus(skus: list[SKU], forecasts: dict[str, float],
 
 
 def _decision_cards(assort, prices, promo, inv, risks, forecasts,
-                    fc_q, el_q, rk_q, uplift, carried_set) -> list[str]:
+                    fc_q, el_q, rk_q, uplift, carried_set, sl_reco) -> list[str]:
     cards: list[str] = []
 
     n_risk_dropped = sum(1 for s in assort.dropped if risks.get(s, 0) >= RISK_ALERT)
@@ -87,6 +88,14 @@ def _decision_cards(assort, prices, promo, inv, risks, forecasts,
     cards.append(
         f"Inventory: set order-up-to & reorder points on {len(inv)} carried "
         f"SKUs from the demand forecast (avg safety stock {avg_ss:.1f} units).")
+
+    cards.append(
+        f"Service level: the forecast-residual curve recommends a "
+        f"{sl_reco['service_level'] * 100:.0f}% target (empirical "
+        f"{sl_reco['empirical_z']:.2f} sigma vs Gaussian {sl_reco['gaussian_z']:.2f}) "
+        f"-> ~{sl_reco['expected_fill_rate'] * 100:.1f}% expected unit fill rate at "
+        f"EUR {sl_reco['total_cost_eur_month']:,.0f}/mo illustrative cost; "
+        f"assuming a bell curve would under-stock the fat-tailed forecast error.")
 
     n_alert = sum(1 for s, r in risks.items()
                   if r >= RISK_ALERT and s in carried_set)
@@ -144,6 +153,13 @@ def prescribe(budget: float = 60_000.0,
     prices = optimize_prices(carried_price, price_guardrail)
     promo = optimize_promo(carried_ops, promo_budget)
 
+    # forecast-uncertainty -> service-level curve: the empirical prediction
+    # intervals from the forecaster's own residuals drive a safety-stock vs
+    # fill-rate vs cost sweep, and a cost-minimising recommended service level.
+    fc_residuals = fc.one_step_residuals(model, history)
+    sl_curve = service_level_curve(carried_ops, fc_residuals)
+    sl_reco = recommend_service_level(sl_curve)
+
     # ---------------- uplift vs current baseline ----------------
     pricing_uplift_annual = sum(p.margin_uplift_eur for p in prices) * 12
     uplift = {
@@ -161,7 +177,7 @@ def prescribe(budget: float = 60_000.0,
     baseline_margin = round(sum(s.annual_margin_eur for s in skus), 2)
 
     cards = _decision_cards(assort, prices, promo, inv, risks, forecasts,
-                            fc_q, el_q, rk_q, uplift, carried_set)
+                            fc_q, el_q, rk_q, uplift, carried_set, sl_reco)
 
     return {
         "inputs": {
@@ -195,7 +211,11 @@ def prescribe(budget: float = 60_000.0,
                 "n_moves": sum(1 for p in prices if abs(p.price_change_pct) >= 1.0),
                 "lines": [asdict(p) for p in prices],
             },
-            "inventory": {"lines": [asdict(li) for li in inv]},
+            "inventory": {
+                "lines": [asdict(li) for li in inv],
+                "service_level_curve": [asdict(p) for p in sl_curve],
+                "recommended_service_level": sl_reco,
+            },
             "promo": {
                 "allocation": promo.allocation,
                 "incremental_margin_eur": promo.incremental_margin_eur,

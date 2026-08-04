@@ -77,6 +77,45 @@ and report expected units short per period,
 OTIF-style fill-rate KPI. A service-vs-cost frontier sweeps the service level so
 the planner sees the trade-off, not just one point.
 
+### 2a. Forecast uncertainty → the service-level (fill-rate) curve
+
+The safety-stock formula above needs a demand-variability `σ`. The honest input
+is not the raw historical spread — it is how wrong the *forecast* tends to be. So
+`revops/optimize/service_level.py` takes the forecaster's own one-step residuals
+`e = actual − forecast`, standardizes them per SKU (`r = e/σ̂_sku`) and pools them
+into one empirical error distribution. Its quantiles replace `Φ⁻¹`:
+
+```
+z_emp(SL) = empirical SL-quantile of the pooled standardized residuals
+ss_sku(SL) = z_emp(SL) · σ̂_sku                    (no normality assumed)
+E[units short]_sku(SL) = σ̂_sku · mean_i( max(0, r_i − z_emp(SL)) )   (empirical)
+fill_rate(SL) = 1 − Σ_sku E[units short]_sku / Σ_sku μ̂_sku
+```
+
+Sweeping `SL` from 80% → 99% gives, at each level, the required safety stock, its
+holding cost, the expected unit fill rate and the expected stockout cost, and we
+recommend the level that **minimizes total illustrative cost**:
+
+```
+overage  (holding)  = ss_sku · unit_cost · (annual_holding_rate / 12)     per month
+underage (stockout) = E[units short]_sku · unit_margin · penalty_mult      per month
+recommended SL = argmin_SL ( Σ holding + Σ stockout )
+```
+
+**Cost rates are illustrative, labelled, not a guarantee** — a single-period
+(monthly) framing on synthetic data. `penalty_mult` (default 1.0 = pure lost
+margin) is an optional goodwill/expedite multiplier; raising it moves the
+recommendation up. On the seeded carried assortment the curve recommends a **96%
+target**, which buys a **~99.3% expected unit fill rate** — a cycle service level
+of 96% still meets ~99% of *demand* because most stockout cycles miss by only a
+little, a distinction a single "service level" number hides.
+
+The honest headline: the pooled residuals are **fat-tailed** (95% quantile at
+~2.15σ vs the Gaussian 1.64σ), so a normal-curve safety stock would silently
+under-provision at high service levels. Deliverables:
+`deliverables/service_level_curve.csv` and a hand-drawn
+`deliverables/service_level_curve.svg`.
+
 ---
 
 ## 3. Pricing — constant-elasticity profit max (Lerner) with a guardrail
