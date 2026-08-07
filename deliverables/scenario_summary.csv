@@ -1,0 +1,7 @@
+scenario,total_uplift_eur,pricing_uplift_eur,promo_uplift_eur,assortment_uplift_eur,delta_vs_baseline_eur,n_carried,capital_used_eur
+Baseline,159966.19,35220.36,18583.8,106162.03,0.0,29,56152.48
+Demand downturn -15%,136528.11,33538.68,15661.62,87327.81,-23438.08,30,54890.91
+Cost inflation +8%,139487.29,42343.68,14876.78,82266.83,-20478.9,29,59934.26
+Tight capital -25%,122167.14,27215.4,15345.28,79606.46,-37799.05,30,44936.72
+Promo push +50%,160024.66,35220.36,18642.27,106162.03,58.47,29,56152.48
+More elastic market +20%,149622.43,24876.6,18583.8,106162.03,-10343.76,29,56152.48

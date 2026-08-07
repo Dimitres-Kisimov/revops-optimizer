@@ -199,3 +199,33 @@ formula the web dashboard's what-if slider re-solves live via a bisection on
 The models are the **smallest credible version** of each — real formulations,
 solved exactly, on synthetic-but-structured data. See `METHODOLOGY.md` for how
 the AI models feed them and `USE_CASE.md` for the end-to-end narrative.
+
+---
+
+## Robustness — scenarios and a one-way sensitivity tornado
+
+A prescriptive plan collapses a lot of uncertainty into a single €. `revops/scenario.py`
+puts that number under stress without touching the optimizers: the predictive
+layer is trained **once**, and each *scenario* perturbs its outputs before
+re-solving the same MILP / pricing / promo programs (reusing `prescribe()`'s own
+`_adjusted_skus` adapter, so the *Baseline* scenario reproduces the headline plan
+exactly).
+
+A scenario is four prediction multipliers `(demand, cost, |elasticity|, decline
+risk)` and the four decision knobs `(capital budget, shelf capacity, promo budget,
+price guardrail)`. Two views are produced:
+
+* **Scenario library** — named business cases (demand downturn, cost inflation,
+  tight capital, promo push, a more-elastic market), each compared to baseline on
+  total uplift and its three components.
+* **One-way sensitivity (tornado)** — each driver is swept across a plausible
+  planning band `[a, b]` while everything else is held at baseline, and the swing
+  in total uplift, `Δ = u(high) − u(low)`, is ranked widest-first. The widest bar
+  is the assumption the € is most exposed to. Because the sweep is one-at-a-time it
+  reads *local* sensitivity, not interactions; the named scenarios cover the
+  combined moves.
+
+The bands are **illustrative planning ranges, not a forecast** (absolute knobs
+±25%; demand ±15%, cost ±8%, elasticity ±20%, risk ±30%), and each figure is what
+the model computes under that assumption — not a guarantee. The whole thing is
+deterministic: no RNG, no wall-clock, byte-identical CSV/SVG across re-runs.

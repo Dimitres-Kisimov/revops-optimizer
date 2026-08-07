@@ -42,6 +42,9 @@ jobs:
       - name: Build deliverables
         run: python -m revops.report
 
+      - name: Build scenario & sensitivity deliverables
+        run: python -m revops.scenario --quiet
+
       - name: Build Power BI star schema
         run: python powerbi/build_star.py
 
@@ -62,6 +65,9 @@ jobs:
               "deliverables/actions.csv",
               "deliverables/optimization_workbook.xlsx",
               "deliverables/executive_review.pdf",
+              "deliverables/scenario_summary.csv",
+              "deliverables/sensitivity_tornado.csv",
+              "deliverables/sensitivity_tornado.svg",
               "powerbi/data/fact_prescription.csv",
               "powerbi/data/dim_sku.csv",
               "powerbi/data/dim_category.csv",

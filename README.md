@@ -60,6 +60,49 @@ illustrative, not a guarantee.
 
 ![Forecast-uncertainty service-level curve — illustrative cost vs target service level, and expected unit fill rate](deliverables/service_level_curve.svg)
 
+### How robust is the € number? Scenarios + a sensitivity tornado
+
+A single point estimate invites the obvious question: *how much should I trust it,
+and which assumption moves it most?* So the same predict→optimize core is re-run
+under named business scenarios and swept one driver at a time. The forecaster is
+trained **once**; each scenario perturbs its outputs (a demand multiplier on the
+forecast, a cost multiplier on the master, an elasticity/risk multiplier) and
+re-solves the MILP, pricing and promo exactly as `prescribe()` does — so the
+*Baseline* scenario reproduces the €159,966 headline to the cent.
+
+```
+Scenario                    Total EUR/yr     vs baseline
+Baseline                         159,966              +0
+Demand downturn -15%             136,528         -23,438
+Cost inflation +8%               139,487         -20,479
+Tight capital -25%               122,167         -37,799
+Promo push +50%                  160,025             +58
+More elastic market +20%         149,622         -10,344
+```
+
+The one-way **tornado** ranks each driver by the swing it puts on the total uplift.
+On the seeded dataset the headline is most exposed to the two assortment
+constraints and to input cost — and barely to the promo budget:
+
+```
+Capital budget   EUR 128,266 .. 170,201   swing 41,935
+Shelf capacity   EUR 142,305 .. 182,008   swing 39,703
+Unit cost        EUR 139,487 .. 179,061   swing 39,573
+Elasticity est.  EUR 149,622 .. 170,866   swing 21,243
+Demand level     EUR 147,311 .. 166,690   swing 19,379
+Price guardrail  EUR 150,516 .. 167,663   swing 17,147
+Decline risk     EUR 157,317 .. 158,545   swing  1,227
+Promo budget     EUR 159,868 .. 160,007   swing    138
+```
+
+That the two biggest bars are *capital* and *shelf* is consistent with the honest
+note below — the six-figure MILP-vs-greedy advantage lives on the assortment
+constraints. The perturbation bands are **illustrative planning ranges, not a
+forecast**, and each figure is what the model computes under that assumption, not
+a guarantee.
+
+![Sensitivity tornado — swing in expected uplift as each driver is swept over a plausible planning band, ranked widest first](deliverables/sensitivity_tornado.svg)
+
 ## Run it
 
 ```bash
@@ -67,6 +110,7 @@ pip install numpy scipy matplotlib openpyxl python-pptx torch pytest ruff
 
 python data/generate_skus.py && python data/generate_history.py   # synthetic data
 python -m revops --quiet          # headline plan + decision cards
+python -m revops.scenario --quiet # scenario library + sensitivity tornado (CSV + SVG)
 python -m revops.report           # deliverables/ (json, xlsx, pdf, pptx, csv)
 python powerbi/build_star.py      # powerbi/data/ star-schema CSVs
 python web/build_data.py          # web/data.js  → open web/index.html offline
@@ -83,7 +127,9 @@ Knobs: `--budget`, `--shelf-capacity-m3`, `--service-level`, `--promo-budget`,
   price-move distribution, promo allocation, a model-quality slide, recommended
   actions), a styled Excel workbook (with a `ServiceLevel` sheet), `actions.csv`
   (per-SKU reorder + reprice), and the service-level curve as
-  `service_level_curve.csv` + a hand-drawn `service_level_curve.svg`.
+  `service_level_curve.csv` + a hand-drawn `service_level_curve.svg`, plus the
+  robustness pack — `scenario_summary.csv` (named scenarios vs baseline),
+  `sensitivity_tornado.csv` and a hand-drawn `sensitivity_tornado.svg`.
 - **`powerbi/`** — a star schema (`fact_prescription` + `dim_sku/category/date` +
   a scalar KPI table) with the KPIs written as real DAX, and a build spec for the
   three report pages. No tenant needed to produce or review it — that's stated
