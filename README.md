@@ -103,6 +103,37 @@ a guarantee.
 
 ![Sensitivity tornado — swing in expected uplift as each driver is swept over a plausible planning band, ranked widest first](deliverables/sensitivity_tornado.svg)
 
+### A confidence band on the € — a joint Monte-Carlo (interactions)
+
+The tornado sweeps one driver at a time, so it reads *local* sensitivity and
+**not interactions**. The obvious follow-up — *taking all the uncertainty
+together, what is the range, and how bad is the downside?* — is a joint
+**Monte-Carlo**. `revops/simulate.py` draws the four predictive uncertainties
+(demand, unit cost, estimated elasticity, decline risk) **together** from
+three-point (triangular) planning distributions — the *same* bands the tornado
+uses — and re-solves the identical predict→optimize core for each draw. Decision
+levers stay at baseline; every draw is re-optimized, so the band is the range of
+*achievable* uplift. Sampling is a fixed-seed Latin-Hypercube design, so the
+CSV/SVG are byte-identical across re-runs (deterministic, no wall-clock).
+
+```
+Headline point estimate          EUR 159,966 / year   (the mode draw = the plan)
+P10 – P90 confidence band        EUR 145,091 .. 170,723 / year
+Median (P50)  /  mean            EUR 158,504  /  158,117
+Downside VaR(10%)                EUR 145,091   (headline-at-risk EUR 14,875)
+Expected shortfall  CVaR(10%)    EUR 139,504   (mean of the worst 10% of draws)
+P(outcome >= headline)           43%           (256 draws, seed 20260807)
+```
+
+The honest read: once the four uncertainties move **jointly**, the median
+(~€158.5k) lands *below* the €159,966 point estimate and there is only a ~43%
+chance of clearing it — a mildly optimistic, slightly left-skewed profile a
+single number (or a one-way tornado) hides. The bands are **illustrative
+planning ranges on synthetic data, not a forecast**; each figure is what the
+model computes under a drawn assumption, not a guarantee.
+
+![Uplift risk band — joint Monte-Carlo distribution of total expected uplift with the P10–P90 band shaded and the deterministic headline marked](deliverables/uplift_distribution.svg)
+
 ## Run it
 
 ```bash
@@ -111,6 +142,7 @@ pip install numpy scipy matplotlib openpyxl python-pptx torch pytest ruff
 python data/generate_skus.py && python data/generate_history.py   # synthetic data
 python -m revops --quiet          # headline plan + decision cards
 python -m revops.scenario --quiet # scenario library + sensitivity tornado (CSV + SVG)
+python -m revops.simulate --quiet # joint Monte-Carlo uplift risk band (CSV + SVG; ~a few min)
 python -m revops.report           # deliverables/ (json, xlsx, pdf, pptx, csv)
 python powerbi/build_star.py      # powerbi/data/ star-schema CSVs
 python web/build_data.py          # web/data.js  → open web/index.html offline
@@ -118,7 +150,9 @@ pytest -q                         # 21 tests, ~8s
 ```
 
 Knobs: `--budget`, `--shelf-capacity-m3`, `--service-level`, `--promo-budget`,
-`--price-guardrail`, `--json out.json`.
+`--price-guardrail`, `--json out.json`. The simulator takes `--draws N` (default
+256) and `--hurdle EUR` (probability the outcome clears a target; defaults to the
+headline point estimate).
 
 ## What comes out
 
@@ -129,10 +163,14 @@ Knobs: `--budget`, `--shelf-capacity-m3`, `--service-level`, `--promo-budget`,
   (per-SKU reorder + reprice), and the service-level curve as
   `service_level_curve.csv` + a hand-drawn `service_level_curve.svg`, plus the
   robustness pack — `scenario_summary.csv` (named scenarios vs baseline),
-  `sensitivity_tornado.csv` and a hand-drawn `sensitivity_tornado.svg`.
+  `sensitivity_tornado.csv` and a hand-drawn `sensitivity_tornado.svg`, and the
+  joint Monte-Carlo risk band — `uplift_simulation.csv` (a tall, DAX-ready P10/
+  P50/P90 + VaR/CVaR summary) and a hand-drawn `uplift_distribution.svg`.
 - **`powerbi/`** — a star schema (`fact_prescription` + `dim_sku/category/date` +
   a scalar KPI table) with the KPIs written as real DAX, and a build spec for the
-  three report pages. No tenant needed to produce or review it — that's stated
+  three report pages. Run the simulator first and it also emits a disconnected
+  `kpi_uplift_risk` table (the P10/P50/P90 band + VaR/CVaR) with matching DAX
+  measures (§10). No tenant needed to produce or review it — that's stated
   honestly in [`powerbi/README.md`](powerbi/README.md).
 - **`web/index.html`** — a dependency-free dashboard (hand-drawn SVG charts,
   light/dark, a promo what-if slider that re-solves the concave allocation in the
@@ -162,6 +200,13 @@ narrative.
   are what that model computes, not a guaranteed field outcome. The empirical
   prediction intervals, though, are a genuine, deterministic read of the
   forecaster's own error.
+- **The Monte-Carlo band is only as good as its input distributions.** The
+  triangular planning ranges are assumptions, not fitted from data, and each draw
+  is *re-optimized* (perfect adaptation), so the band describes the spread of the
+  best achievable € across conditions — not the drift of a frozen plan or a
+  probabilistic forecast of realized results. It is deterministic (fixed seed,
+  Latin-Hypercube), so the figures are exact-as-computed and reproducible, but
+  they are modelled, not measured.
 
 ## A note on fit
 

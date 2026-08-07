@@ -45,6 +45,9 @@ jobs:
       - name: Build scenario & sensitivity deliverables
         run: python -m revops.scenario --quiet
 
+      - name: Smoke — joint Monte-Carlo risk band (few draws for speed)
+        run: python -m revops.simulate --quiet --draws 24
+
       - name: Build Power BI star schema
         run: python powerbi/build_star.py
 

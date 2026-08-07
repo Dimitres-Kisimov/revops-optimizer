@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="430" viewBox="0 0 760 430" font-family="Segoe UI, Arial, sans-serif">
+<rect width="760" height="430" fill="white"/>
+<text x="56" y="30" font-size="16" font-weight="700" fill="#1f2933">Uplift risk band - joint Monte-Carlo (256 draws)</text>
+<text x="56" y="48" font-size="11" fill="#9aa5b1">Demand, cost, elasticity &amp; decline risk drawn together; illustrative, not a forecast</text>
+<text x="56" y="66" font-size="11" fill="#1f2933">P10-P90 band EUR 145,091 .. 170,723/yr &#183; median EUR 158,504 &#183; mean EUR 158,117</text>
+<rect x="251.2" y="92" width="249.0" height="250" fill="#2f6bff" opacity="0.08"/>
+<line x1="56" y1="342.0" x2="736" y2="342.0" stroke="#eef1f5" stroke-width="1"/>
+<text x="50" y="345.0" font-size="9" text-anchor="end" fill="#9aa5b1">0</text>
+<line x1="56" y1="279.5" x2="736" y2="279.5" stroke="#eef1f5" stroke-width="1"/>
+<text x="50" y="282.5" font-size="9" text-anchor="end" fill="#9aa5b1">8</text>
+<line x1="56" y1="217.0" x2="736" y2="217.0" stroke="#eef1f5" stroke-width="1"/>
+<text x="50" y="220.0" font-size="9" text-anchor="end" fill="#9aa5b1">17</text>
+<line x1="56" y1="154.5" x2="736" y2="154.5" stroke="#eef1f5" stroke-width="1"/>
+<text x="50" y="157.5" font-size="9" text-anchor="end" fill="#9aa5b1">26</text>
+<line x1="56" y1="92.0" x2="736" y2="92.0" stroke="#eef1f5" stroke-width="1"/>
+<text x="50" y="95.0" font-size="9" text-anchor="end" fill="#9aa5b1">34</text>
+<text x="56" y="82" font-size="10" fill="#1f2933" font-weight="600">Draws</text>
+<rect x="84.9" y="327.3" width="27.1" height="14.7" fill="#2f6bff" opacity="0.55"/>
+<rect x="113.3" y="319.9" width="27.1" height="22.1" fill="#2f6bff" opacity="0.55"/>
+<rect x="141.6" y="327.3" width="27.1" height="14.7" fill="#2f6bff" opacity="0.55"/>
+<rect x="169.9" y="327.3" width="27.1" height="14.7" fill="#2f6bff" opacity="0.55"/>
+<rect x="198.3" y="297.9" width="27.1" height="44.1" fill="#2f6bff" opacity="0.55"/>
+<rect x="226.6" y="231.7" width="27.1" height="110.3" fill="#2f6bff" opacity="0.55"/>
+<rect x="254.9" y="253.8" width="27.1" height="88.2" fill="#2f6bff" opacity="0.55"/>
+<rect x="283.3" y="217.0" width="27.1" height="125.0" fill="#2f6bff" opacity="0.55"/>
+<rect x="311.6" y="165.5" width="27.1" height="176.5" fill="#2f6bff" opacity="0.55"/>
+<rect x="339.9" y="128.8" width="27.1" height="213.2" fill="#2f6bff" opacity="0.55"/>
+<rect x="368.3" y="92.0" width="27.1" height="250.0" fill="#2f6bff" opacity="0.55"/>
+<rect x="396.6" y="136.1" width="27.1" height="205.9" fill="#2f6bff" opacity="0.55"/>
+<rect x="424.9" y="128.8" width="27.1" height="213.2" fill="#2f6bff" opacity="0.55"/>
+<rect x="453.3" y="202.3" width="27.1" height="139.7" fill="#2f6bff" opacity="0.55"/>
+<rect x="481.6" y="253.8" width="27.1" height="88.2" fill="#2f6bff" opacity="0.55"/>
+<rect x="509.9" y="261.1" width="27.1" height="80.9" fill="#2f6bff" opacity="0.55"/>
+<rect x="538.3" y="312.6" width="27.1" height="29.4" fill="#2f6bff" opacity="0.55"/>
+<rect x="566.6" y="305.2" width="27.1" height="36.8" fill="#2f6bff" opacity="0.55"/>
+<rect x="594.9" y="334.6" width="27.1" height="7.4" fill="#2f6bff" opacity="0.55"/>
+<rect x="679.9" y="334.6" width="27.1" height="7.4" fill="#2f6bff" opacity="0.55"/>
+<line x1="251.2" y1="92" x2="251.2" y2="342" stroke="#9aa5b1" stroke-width="1.2" stroke-dasharray="4 3"/>
+<text x="251.2" y="90.0" font-size="9.5" text-anchor="middle" font-weight="700" fill="#9aa5b1">P10 145k</text>
+<line x1="500.2" y1="92" x2="500.2" y2="342" stroke="#9aa5b1" stroke-width="1.2" stroke-dasharray="4 3"/>
+<text x="500.2" y="90.0" font-size="9.5" text-anchor="middle" font-weight="700" fill="#9aa5b1">P90 171k</text>
+<line x1="381.5" y1="92" x2="381.5" y2="342" stroke="#1f2933" stroke-width="1.6"/>
+<text x="381.5" y="90.0" font-size="9.5" text-anchor="middle" font-weight="700" fill="#1f2933">median 159k</text>
+<line x1="395.7" y1="92" x2="395.7" y2="342" stroke="#1d9e6f" stroke-width="1.8" stroke-dasharray="5 3"/>
+<text x="395.7" y="90.0" font-size="9.5" text-anchor="middle" font-weight="700" fill="#1d9e6f">headline 160k</text>
+<text x="56.0" y="360.0" font-size="9" text-anchor="middle" fill="#9aa5b1">EUR 125k</text>
+<text x="192.0" y="360.0" font-size="9" text-anchor="middle" fill="#9aa5b1">EUR 139k</text>
+<text x="328.0" y="360.0" font-size="9" text-anchor="middle" fill="#9aa5b1">EUR 153k</text>
+<text x="464.0" y="360.0" font-size="9" text-anchor="middle" fill="#9aa5b1">EUR 167k</text>
+<text x="600.0" y="360.0" font-size="9" text-anchor="middle" fill="#9aa5b1">EUR 181k</text>
+<text x="736.0" y="360.0" font-size="9" text-anchor="middle" fill="#9aa5b1">EUR 195k</text>
+<text x="396.0" y="378.0" font-size="10" text-anchor="middle" fill="#1f2933">Total expected uplift (EUR / year)</text>
+<text x="56" y="416" font-size="10.5" fill="#1f2933">Downside: VaR(10%) EUR 145,091 &#183; CVaR(10%) EUR 139,504 &#183; P(&#8805; headline) 43%</text>
+</svg>

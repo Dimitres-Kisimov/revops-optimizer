@@ -29,7 +29,15 @@ _PLAN = _ROOT / "deliverables" / "prescription.json"
 _MASTER = _ROOT / "data" / "sku_master.csv"
 _HISTORY = _ROOT / "data" / "demand_history.csv"
 _FORECASTS = _ROOT / "data" / "forecasts.csv"
+_SIM = _ROOT / "deliverables" / "uplift_simulation.csv"
 _OUT = Path(__file__).resolve().parent / "data"
+
+# metrics lifted from the Monte-Carlo deliverable into a disconnected KPI table
+_RISK_METRICS = (
+    "baseline_point_estimate_eur", "total_p10_eur", "total_p50_eur",
+    "total_p90_eur", "total_mean_eur", "total_var10_eur", "total_cvar10_eur",
+    "total_prob_at_or_above_hurdle", "n_draws",
+)
 
 
 def _load_plan() -> dict:
@@ -199,9 +207,37 @@ def build() -> dict[str, Path]:
         w.writerow(["capital_used_eur", a["capital_used_eur"]])
         w.writerow(["promo_budget_eur", pm["budget_eur"]])
 
-    return {"fact_prescription": fact, "dim_sku": dim_sku,
-            "dim_category": dim_category, "dim_date": dim_date,
-            "kpi_headline": kpi}
+    out = {"fact_prescription": fact, "dim_sku": dim_sku,
+           "dim_category": dim_category, "dim_date": dim_date,
+           "kpi_headline": kpi}
+
+    # ---- kpi_uplift_risk (optional) ---------------------------------------
+    # A second disconnected scalar table with the Monte-Carlo risk band, emitted
+    # only when the simulation deliverable exists (so CI, which does not run the
+    # simulation, is unaffected). Same (metric, value) shape as kpi_headline.
+    risk = _write_uplift_risk()
+    if risk is not None:
+        out["kpi_uplift_risk"] = risk
+    return out
+
+
+def _write_uplift_risk() -> Path | None:
+    """Lift the P10/P50/P90 band + VaR/CVaR + clear-probability from
+    ``deliverables/uplift_simulation.csv`` into a Power BI KPI table. Returns
+    None (no-op) when the simulation has not been run."""
+    if not _SIM.exists():
+        return None
+    with _SIM.open(encoding="utf-8-sig", newline="") as f:
+        vals = {r["metric"]: r["value"] for r in csv.DictReader(f)}
+    p = _OUT / "kpi_uplift_risk.csv"
+    p.parent.mkdir(parents=True, exist_ok=True)
+    with p.open("w", newline="", encoding="utf-8") as f:
+        w = csv.writer(f)
+        w.writerow(["metric", "value"])
+        for m in _RISK_METRICS:
+            if m in vals:
+                w.writerow([m, vals[m]])
+    return p
 
 
 def _capital(r: dict) -> float:

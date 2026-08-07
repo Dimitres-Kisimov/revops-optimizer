@@ -207,6 +207,74 @@ RETURN
     DIVIDE ( _cur - _prior, _prior )   -- BLANK until a prior year exists
 ```
 
+## 10. Uplift risk band (Monte-Carlo)
+
+`build_star.py` emits a second disconnected one-row-per-metric table,
+`kpi_uplift_risk`, **when the simulation has been run**
+(`python -m revops.simulate`). It carries the joint Monte-Carlo band on the
+headline € — read exactly like `kpi_headline`, with a `metric = "..."` filter.
+These let a report page show the point estimate against its P10–P90 band and the
+downside metrics, rather than a bare number. The figures are **modelled on
+synthetic data — illustrative planning ranges, not a forecast.**
+
+```DAX
+Uplift P10 =
+CALCULATE ( SUM ( kpi_uplift_risk[value] ),
+    kpi_uplift_risk[metric] = "total_p10_eur" )
+```
+
+```DAX
+Uplift Median (P50) =
+CALCULATE ( SUM ( kpi_uplift_risk[value] ),
+    kpi_uplift_risk[metric] = "total_p50_eur" )
+```
+
+```DAX
+Uplift P90 =
+CALCULATE ( SUM ( kpi_uplift_risk[value] ),
+    kpi_uplift_risk[metric] = "total_p90_eur" )
+```
+
+```DAX
+Uplift Band Width (P90 - P10) =
+[Uplift P90] - [Uplift P10]
+```
+
+Downside metrics — Value-at-Risk (the P10 floor) and Conditional VaR (expected
+shortfall, the mean of the worst 10% of draws):
+
+```DAX
+Uplift VaR (10%) =
+CALCULATE ( SUM ( kpi_uplift_risk[value] ),
+    kpi_uplift_risk[metric] = "total_var10_eur" )
+```
+
+```DAX
+Uplift CVaR (10%) =
+CALCULATE ( SUM ( kpi_uplift_risk[value] ),
+    kpi_uplift_risk[metric] = "total_cvar10_eur" )
+```
+
+Probability the re-optimized outcome clears the headline point estimate (a 0–1
+value; format as a percentage):
+
+```DAX
+P(Uplift >= Headline) =
+CALCULATE ( SUM ( kpi_uplift_risk[value] ),
+    kpi_uplift_risk[metric] = "total_prob_at_or_above_hurdle" )
+```
+
+A conditional-format helper — flag when the deterministic headline sits above the
+modelled median (i.e. the point estimate is on the optimistic side of the band):
+
+```DAX
+Headline vs Median =
+VAR _point = CALCULATE ( SUM ( kpi_uplift_risk[value] ),
+    kpi_uplift_risk[metric] = "baseline_point_estimate_eur" )
+RETURN
+    IF ( _point > [Uplift Median (P50)], "Optimistic", "Conservative" )
+```
+
 ---
 
 ### Notes on correctness

@@ -229,3 +229,36 @@ The bands are **illustrative planning ranges, not a forecast** (absolute knobs
 ±25%; demand ±15%, cost ±8%, elasticity ±20%, risk ±30%), and each figure is what
 the model computes under that assumption — not a guarantee. The whole thing is
 deterministic: no RNG, no wall-clock, byte-identical CSV/SVG across re-runs.
+
+### Joint Monte-Carlo — the interactions the tornado cannot see
+
+The tornado is one-at-a-time, so it reads *local* sensitivity and **not
+interactions**. `revops/simulate.py` closes exactly that gap: the four predictive
+uncertainties `(demand, unit cost, |elasticity|, decline risk)` are drawn
+**together** from three-point (triangular, mode = 1.0) planning distributions —
+the same bands the tornado uses — and each joint draw is pushed back through the
+*identical* `scenario.evaluate` core (re-solving the MILP, pricing and promo).
+The decision *levers* are held at baseline, because they are choices, not
+uncertainties; every draw is re-optimized, so the output is the range of
+*achievable* uplift across plausible conditions.
+
+The headline € then becomes a distribution rather than a point:
+
+```
+P10 .. P90 confidence band          the middle 80% of achievable uplift
+median (P50)                        the central outcome
+VaR(10%)  = P10                     a 90%-confident downside floor
+CVaR(10%) = mean of the worst 10%   expected shortfall (a tail-risk read)
+P(uplift >= headline point est.)    chance the outcome clears the point estimate
+```
+
+Sampling is a **Latin-Hypercube** design under a **fixed seed**, so the marginals
+are smooth at a few hundred draws and the CSV/SVG are byte-identical across
+re-runs — deterministic despite being a simulation. On the seeded 240-SKU set the
+headline €159,966 point estimate sits *above* the modelled median (~€158.5k) with
+only a ~43% chance of being cleared once the four uncertainties move jointly — a
+mildly optimistic, slightly left-skewed profile. That is the honest, interaction-
+aware read a single point estimate (or a one-way tornado) hides. Deliverables:
+`deliverables/uplift_simulation.csv` (a tall, DAX-ready summary) and a hand-drawn
+`deliverables/uplift_distribution.svg`. Figures are **modelled on synthetic data
+— illustrative planning ranges, not a forecast or a guarantee.**

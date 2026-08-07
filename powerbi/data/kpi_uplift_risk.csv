@@ -1,0 +1,10 @@
+metric,value
+baseline_point_estimate_eur,159966.19
+total_p10_eur,145091.45
+total_p50_eur,158504.35
+total_p90_eur,170722.92
+total_mean_eur,158116.86
+total_var10_eur,145091.45
+total_cvar10_eur,139503.85
+total_prob_at_or_above_hurdle,0.4336
+n_draws,256

@@ -18,9 +18,17 @@ powerbi/
     dim_category.csv        category attributes + promo allocation
     dim_date.csv            a small calendar (24 history months + forecast month)
     kpi_headline.csv        disconnected 1-row table of plan-level scalars
+    kpi_uplift_risk.csv     disconnected risk-band table (only after the
+                            simulation is run — see below)
   DAX_measures.md      the KPIs as real, paste-ready DAX
   README.md            this file
 ```
+
+`kpi_uplift_risk.csv` is written **only when** the Monte-Carlo deliverable
+exists — run `python -m revops.simulate` before `build_star.py` to get it. It
+holds the P10/P50/P90 band on the headline €, the downside VaR/CVaR and the
+clear-probability; §10 of `DAX_measures.md` reads it. Treat it as a second
+disconnected table (no relationship), like `kpi_headline`.
 
 Regenerate any time after the plan changes:
 
@@ -74,6 +82,10 @@ python powerbi/build_star.py   # writes powerbi/data/*.csv
   "lever" field (Baseline / Pricing / Promo / Assortment), value = the matching
   measure; or use the `kpi_headline` rows directly.
 - **Assortment donut**: `SKUs Carried` vs total by `fact_prescription[carried]`.
+- **Uplift risk band** (if the simulation was run): an error-bar / range card
+  showing **Uplift Median (P50)** with **Uplift P10 → P90** whiskers, plus
+  cards for **Uplift VaR (10%)**, **Uplift CVaR (10%)** and
+  **P(Uplift ≥ Headline)** — the honest "how much do I trust the number" panel.
 
 ### Page 2 — Assortment & Inventory
 - **Matrix**: rows `dim_category[category]` → `dim_sku[sku]`, values
