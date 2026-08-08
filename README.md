@@ -1,6 +1,6 @@
 # RevOps Optimizer
 
-[![CI](https://github.com/Dimikissimov/revops-optimizer/actions/workflows/ci.yml/badge.svg)](https://github.com/Dimikissimov/revops-optimizer/actions/workflows/ci.yml)
+[![CI](https://github.com/Dimitres-Kisimov/revops-optimizer/actions/workflows/ci.yml/badge.svg)](https://github.com/Dimitres-Kisimov/revops-optimizer/actions/workflows/ci.yml)
 
 This is a revenue-and-operations decision engine for a distributor: it forecasts
 demand, estimates price elasticity and decline risk, and then feeds those
