@@ -40,9 +40,9 @@ from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 
 from .dataio import SKU, load
-from .optimize.assortment import optimize_assortment
-from .optimize.pricing import optimize_prices
-from .optimize.promo import optimize_promo
+from .optimize.assortment import AssortmentResult, optimize_assortment
+from .optimize.pricing import PriceLine, optimize_prices
+from .optimize.promo import PromoResult, optimize_promo
 from .prescribe import _adjusted_skus  # reuse the exact predict->optimize adapter
 
 # baseline knobs mirror prescribe()'s defaults so the Baseline scenario matches
@@ -114,12 +114,37 @@ class ScenarioResult:
     inputs: dict
 
 
-def evaluate(ctx: PredictContext, scenario: Scenario) -> ScenarioResult:
-    """Apply a scenario's perturbations to the (already computed) predictions and
-    re-solve the optimization core, returning the recomputed uplift.
+@dataclass
+class PlanSolution:
+    """The raw optimizer results for one scenario — the assortment MILP result,
+    the carried SKUs' price lines and the promo allocation. ``evaluate`` reduces
+    this to a ``ScenarioResult``; the robustness gate (``revops/robustness.py``)
+    reads the per-SKU detail directly, so both layers share one solved plan.
+    ``price_inputs`` are the perturbed carried SKUs exactly as the pricing
+    optimizer saw them (forecast demand, estimated elasticity, perturbed cost),
+    so downstream layers can re-price *fixed* actions under the same conditions
+    without re-deriving the perturbation arithmetic."""
+    assortment: AssortmentResult
+    prices: list[PriceLine]
+    promo: PromoResult
+    price_inputs: list[SKU]
 
-    The uplift is assembled with the *identical* arithmetic ``prescribe()`` uses
-    (components rounded to cents, the total summed from the unrounded parts)."""
+    @property
+    def pricing_uplift_annual_eur(self) -> float:
+        return sum(p.margin_uplift_eur for p in self.prices) * 12
+
+    @property
+    def total_uplift_eur(self) -> float:
+        """Identical arithmetic to ``prescribe()``: the total is summed from the
+        unrounded parts (each part is rounded only for display)."""
+        return (self.pricing_uplift_annual_eur
+                + self.promo.incremental_margin_eur
+                + self.assortment.milp_uplift_vs_greedy_eur)
+
+
+def solve_plan(ctx: PredictContext, scenario: Scenario) -> PlanSolution:
+    """Apply a scenario's perturbations to the (already computed) predictions and
+    re-solve the optimization core once, returning the full per-SKU detail."""
     pskus = [replace(s, unit_cost_eur=max(0.01, s.unit_cost_eur * scenario.cost_mult))
              for s in ctx.skus]
     p_forecasts = {k: v * scenario.demand_mult for k, v in ctx.forecasts.items()}
@@ -137,11 +162,23 @@ def evaluate(ctx: PredictContext, scenario: Scenario) -> ScenarioResult:
 
     prices = optimize_prices(carried_price, scenario.price_guardrail)
     promo = optimize_promo(carried_ops, scenario.promo_budget)
+    return PlanSolution(assortment=assort, prices=prices, promo=promo,
+                        price_inputs=carried_price)
 
-    pricing_annual = sum(p.margin_uplift_eur for p in prices) * 12
-    promo_inc = promo.incremental_margin_eur
+
+def evaluate(ctx: PredictContext, scenario: Scenario) -> ScenarioResult:
+    """Apply a scenario's perturbations to the (already computed) predictions and
+    re-solve the optimization core, returning the recomputed uplift.
+
+    The uplift is assembled with the *identical* arithmetic ``prescribe()`` uses
+    (components rounded to cents, the total summed from the unrounded parts)."""
+    sol = solve_plan(ctx, scenario)
+    assort = sol.assortment
+
+    pricing_annual = sol.pricing_uplift_annual_eur
+    promo_inc = sol.promo.incremental_margin_eur
     assort_gap = assort.milp_uplift_vs_greedy_eur
-    total = pricing_annual + promo_inc + assort_gap
+    total = sol.total_uplift_eur
 
     return ScenarioResult(
         name=scenario.name,

@@ -262,3 +262,45 @@ aware read a single point estimate (or a one-way tornado) hides. Deliverables:
 `deliverables/uplift_simulation.csv` (a tall, DAX-ready summary) and a hand-drawn
 `deliverables/uplift_distribution.svg`. Figures are **modelled on synthetic data
 — illustrative planning ranges, not a forecast or a guarantee.**
+
+### From a risk band to a decision gate — per-move robustness
+
+The Monte-Carlo band prices the *total*; a planner executes the plan one price
+move at a time. `revops/robustness.py` turns the band into an **accept/hold
+gate** on each recommended price move by replaying the *same* fixed-seed
+Latin-Hypercube draws (same sampler, same seed, same triangular bands — a test
+pins the per-draw totals to `simulate`'s, so the gate decomposes the *published*
+band, not a parallel model) and re-solving the identical `scenario.solve_plan`
+core per draw. Per baseline move (a recommendation with |Δprice| ≥ 1%), across
+the draws:
+
+```
+carry_rate            share of draws the assortment MILP still carries the SKU
+direction_agreement   share of draws the pricing optimizer still recommends the
+                      same move (same direction, still ≥ the 1% threshold)
+uplift P10/P50/P90    annual € of executing the PUBLISHED price under each
+                      draw's (cost, demand, elasticity) — €0 when delisted
+```
+
+The uplift is deliberately the **frozen action's** €, not the re-optimized one:
+a re-optimized move is non-negative whenever the SKU is carried, which would
+make any downside test vacuous. Freezing the published price and letting the
+world move is what actually happens when a price list ships. The gate itself is
+stated in full and tested:
+
+```
+ACCEPT  iff  carry_rate ≥ 90%  and  direction_agreement ≥ 80%  and  P10 > 0
+HOLD    otherwise, with one named reason, checked in order:
+        delist-risk → direction-flips → downside
+```
+
+The accepted moves are also summed **per draw** into an "accepted book", whose
+P10/P50/P90 is a true joint portfolio band (per-move P10s are not additive).
+With degenerate (zero-width) bands every move collapses to accept with a point
+distribution at its baseline € — the collapse-to-base-case gate. Deliverables:
+`deliverables/price_move_robustness.csv` (SKU grain — also lifted into the
+Power BI star as `fact_price_robustness`, §11 of the DAX pack) and a hand-drawn
+`deliverables/price_move_robustness.svg`. Verdicts are **modelled on synthetic
+data under illustrative planning ranges — a screening discipline, not a
+guarantee** that an accepted move will earn its € (or that a held one would not
+have).

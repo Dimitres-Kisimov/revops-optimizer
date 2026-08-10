@@ -30,6 +30,7 @@ _MASTER = _ROOT / "data" / "sku_master.csv"
 _HISTORY = _ROOT / "data" / "demand_history.csv"
 _FORECASTS = _ROOT / "data" / "forecasts.csv"
 _SIM = _ROOT / "deliverables" / "uplift_simulation.csv"
+_ROBUST = _ROOT / "deliverables" / "price_move_robustness.csv"
 _OUT = Path(__file__).resolve().parent / "data"
 
 # metrics lifted from the Monte-Carlo deliverable into a disconnected KPI table
@@ -218,6 +219,14 @@ def build() -> dict[str, Path]:
     risk = _write_uplift_risk()
     if risk is not None:
         out["kpi_uplift_risk"] = risk
+
+    # ---- fact_price_robustness (optional) ---------------------------------
+    # The per-move accept/hold gate at SKU grain (joins dim_sku 1-*), emitted
+    # only when the robustness deliverable exists (run `python -m
+    # revops.robustness` first). Same optional pattern as kpi_uplift_risk.
+    robust = _write_price_robustness()
+    if robust is not None:
+        out["fact_price_robustness"] = robust
     return out
 
 
@@ -237,6 +246,23 @@ def _write_uplift_risk() -> Path | None:
         for m in _RISK_METRICS:
             if m in vals:
                 w.writerow([m, vals[m]])
+    return p
+
+
+def _write_price_robustness() -> Path | None:
+    """Lift the per-move robustness gate (carry rate, direction agreement,
+    frozen-price P10/P50/P90, accept/hold verdict + reason) from
+    ``deliverables/price_move_robustness.csv`` into a SKU-grain fact table.
+    Returns None (no-op) when the gate has not been run."""
+    if not _ROBUST.exists():
+        return None
+    p = _OUT / "fact_price_robustness.csv"
+    p.parent.mkdir(parents=True, exist_ok=True)
+    with _ROBUST.open(encoding="utf-8-sig", newline="") as src, \
+            p.open("w", newline="", encoding="utf-8") as dst:
+        w = csv.writer(dst)
+        for row in csv.reader(src):
+            w.writerow(row)
     return p
 
 

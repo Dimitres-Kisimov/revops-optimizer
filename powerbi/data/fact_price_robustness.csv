@@ -1,0 +1,30 @@
+sku,category,direction,baseline_change_pct,baseline_uplift_annual_eur,carry_rate,direction_agreement,uplift_p10_eur,uplift_p50_eur,uplift_p90_eur,verdict,reason
+S0006,power tools,raise,15.0,15836.25,0.668,0.668,0.0,14591.72,18219.5,hold,delist-risk
+S0240,power tools,raise,15.0,6585.64,1.0,1.0,4946.48,6625.69,8374.79,accept,robust
+S0031,power tools,raise,15.0,4125.07,0.9531,0.9531,3041.04,4110.47,5012.9,accept,robust
+S0090,power tools,raise,15.0,2619.82,1.0,1.0,2117.33,2613.89,3124.83,accept,robust
+S0004,power tools,raise,15.0,2268.46,0.9453,0.9453,1799.01,2241.04,2588.38,accept,robust
+S0153,power tools,raise,15.0,733.1,1.0,1.0,590.72,732.07,876.91,accept,robust
+S0126,power tools,raise,15.0,679.8,1.0,1.0,524.8,680.6,846.53,accept,robust
+S0008,electrical,raise,15.0,616.47,0.9844,0.9844,503.6,613.16,720.58,accept,robust
+S0093,hand tools,raise,15.0,539.11,0.9531,0.9531,309.78,528.4,740.1,accept,robust
+S0001,power tools,raise,15.0,323.66,0.9961,0.9961,257.67,322.87,391.22,accept,robust
+S0045,plumbing,raise,15.0,287.38,1.0,1.0,198.25,290.49,384.21,accept,robust
+S0202,plumbing,raise,15.0,148.55,0.7344,0.7344,0.0,112.16,226.89,hold,delist-risk
+S0033,hand tools,raise,15.0,144.26,1.0,1.0,111.73,144.11,179.13,accept,robust
+S0159,hand tools,raise,15.0,119.46,0.8164,0.8164,0.0,116.58,144.26,hold,delist-risk
+S0186,plumbing,raise,15.0,52.33,1.0,1.0,36.08,52.89,69.97,accept,robust
+S0039,electrical,raise,15.0,39.14,0.6719,0.6719,0.0,35.62,44.91,hold,delist-risk
+S0118,electrical,raise,15.0,32.48,0.9141,0.9141,24.69,32.08,37.01,accept,robust
+S0088,abrasives,cut,-15.0,17.12,0.9844,0.9844,2.69,16.76,30.61,accept,robust
+S0051,chemicals,raise,15.0,16.37,0.75,0.75,0.0,14.69,24.31,hold,delist-risk
+S0065,chemicals,raise,15.0,11.43,0.4219,0.4219,0.0,0.0,14.79,hold,delist-risk
+S0125,chemicals,raise,15.0,10.09,0.668,0.668,0.0,7.4,16.12,hold,delist-risk
+S0106,fasteners,raise,15.0,3.82,0.5859,0.5859,0.0,3.28,4.34,hold,delist-risk
+S0057,ppe,raise,15.0,3.62,1.0,0.9961,1.11,3.73,6.45,accept,robust
+S0108,fasteners,raise,15.0,1.84,0.9883,0.9883,1.32,1.83,2.36,accept,robust
+S0121,fasteners,raise,15.0,1.84,1.0,1.0,1.46,1.84,2.24,accept,robust
+S0234,abrasives,cut,-4.61,1.06,0.9922,0.6914,-2.86,0.95,4.83,hold,direction-flips
+S0189,ppe,raise,6.36,0.83,0.8633,0.668,-1.35,0.61,3.04,hold,delist-risk
+S0217,ppe,raise,6.57,0.24,0.3203,0.2734,0.0,0.0,0.56,hold,delist-risk
+S0237,abrasives,raise,2.14,0.02,0.9609,0.5547,-0.12,0.02,0.17,hold,direction-flips

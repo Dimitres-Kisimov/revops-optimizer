@@ -20,6 +20,8 @@ powerbi/
     kpi_headline.csv        disconnected 1-row table of plan-level scalars
     kpi_uplift_risk.csv     disconnected risk-band table (only after the
                             simulation is run — see below)
+    fact_price_robustness.csv  per-move accept/hold gate at SKU grain (only
+                            after the robustness gate is run — see below)
   DAX_measures.md      the KPIs as real, paste-ready DAX
   README.md            this file
 ```
@@ -29,6 +31,14 @@ exists — run `python -m revops.simulate` before `build_star.py` to get it. It
 holds the P10/P50/P90 band on the headline €, the downside VaR/CVaR and the
 clear-probability; §10 of `DAX_measures.md` reads it. Treat it as a second
 disconnected table (no relationship), like `kpi_headline`.
+
+`fact_price_robustness.csv` is likewise optional — run
+`python -m revops.robustness` before `build_star.py` to get it. One row per
+recommended price move, gated across the same Monte-Carlo draws: carry rate,
+direction agreement, the P10/P50/P90 of executing the published price and an
+`accept`/`hold` verdict with a named reason. Relate it to `dim_sku` on `sku`
+(1-to-many, single direction) like the prescription fact; §11 of
+`DAX_measures.md` reads it.
 
 Regenerate any time after the plan changes:
 

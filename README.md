@@ -134,6 +134,39 @@ model computes under a drawn assumption, not a guarantee.
 
 ![Uplift risk band — joint Monte-Carlo distribution of total expected uplift with the P10–P90 band shaded and the deterministic headline marked](deliverables/uplift_distribution.svg)
 
+### From a risk band to a decision gate — which price moves survive?
+
+A band on the *total* still doesn't tell a pricing manager which of the
+recommended moves to actually ship. So `revops/robustness.py` replays the
+**same** fixed-seed draws behind the risk band (a test pins the per-draw totals
+to the simulator's, so this decomposes the published band rather than building
+a second model) and gates every recommended price move on three facts: does the
+assortment MILP still *carry* the SKU in ≥90% of draws, does the pricing
+optimizer still recommend the *same move* in ≥80%, and does *executing the
+published price* still earn a positive € at the P10? The last one deliberately
+freezes the action while the drawn cost/demand/elasticity move — a re-optimized
+€ is never negative for a carried SKU, which would make a downside test
+meaningless. On the seeded dataset (256 draws):
+
+```
+Recommended price moves            29
+  ACCEPT                           17   (EUR 19,032/yr at baseline)
+  HOLD                             12   (EUR 16,187/yr parked)
+    - delist-risk                  10   (SKU not carried in >=10% of draws)
+    - direction-flips               2   (the optimizer reverses the move)
+Accepted book, joint          P10 EUR 14,070 / P50 18,888 / P90 23,196 per yr
+```
+
+The honest headline: the single biggest pricing move (+15% on S0006, worth
+€15,836/yr — 45% of the whole pricing uplift) is **held**, because the SKU
+survives the assortment re-optimization in only 67% of draws. A point estimate
+presents that € as bankable; the gate shows it rides on a fragile carry
+decision. The verdicts are a **screening discipline on synthetic data under
+illustrative planning ranges, not a guarantee** — accepted means "robust under
+the modelled uncertainty", nothing more.
+
+![Price-move robustness gate — per-move P10..P90 of executing the published price across the joint draws, accept in green, hold in pink with the reason named](deliverables/price_move_robustness.svg)
+
 ## Run it
 
 ```bash
@@ -143,16 +176,18 @@ python data/generate_skus.py && python data/generate_history.py   # synthetic da
 python -m revops --quiet          # headline plan + decision cards
 python -m revops.scenario --quiet # scenario library + sensitivity tornado (CSV + SVG)
 python -m revops.simulate --quiet # joint Monte-Carlo uplift risk band (CSV + SVG; ~a few min)
+python -m revops.robustness --quiet # accept/hold gate on every price move (CSV + SVG; ~a few min)
 python -m revops.report           # deliverables/ (json, xlsx, pdf, pptx, csv)
 python powerbi/build_star.py      # powerbi/data/ star-schema CSVs
 python web/build_data.py          # web/data.js  → open web/index.html offline
-pytest -q                         # 21 tests, ~8s
+pytest -q                         # 69 tests, ~45s
 ```
 
 Knobs: `--budget`, `--shelf-capacity-m3`, `--service-level`, `--promo-budget`,
 `--price-guardrail`, `--json out.json`. The simulator takes `--draws N` (default
 256) and `--hurdle EUR` (probability the outcome clears a target; defaults to the
-headline point estimate).
+headline point estimate); the robustness gate takes the same `--draws N`
+(default 256, matching the simulator so the two layers share draws).
 
 ## What comes out
 
@@ -163,9 +198,11 @@ headline point estimate).
   (per-SKU reorder + reprice), and the service-level curve as
   `service_level_curve.csv` + a hand-drawn `service_level_curve.svg`, plus the
   robustness pack — `scenario_summary.csv` (named scenarios vs baseline),
-  `sensitivity_tornado.csv` and a hand-drawn `sensitivity_tornado.svg`, and the
+  `sensitivity_tornado.csv` and a hand-drawn `sensitivity_tornado.svg`, the
   joint Monte-Carlo risk band — `uplift_simulation.csv` (a tall, DAX-ready P10/
-  P50/P90 + VaR/CVaR summary) and a hand-drawn `uplift_distribution.svg`.
+  P50/P90 + VaR/CVaR summary) and a hand-drawn `uplift_distribution.svg` — and
+  the per-move decision gate — `price_move_robustness.csv` (one accept/hold row
+  per recommended price move) and a hand-drawn `price_move_robustness.svg`.
 - **`powerbi/`** — a star schema (`fact_prescription` + `dim_sku/category/date` +
   a scalar KPI table) with the KPIs written as real DAX, and a build spec for the
   three report pages. Run the simulator first and it also emits a disconnected
@@ -207,6 +244,13 @@ narrative.
   probabilistic forecast of realized results. It is deterministic (fixed seed,
   Latin-Hypercube), so the figures are exact-as-computed and reproducible, but
   they are modelled, not measured.
+- **The accept/hold gate inherits those same assumptions.** Its per-move €
+  freezes the published price while the drawn conditions move — the right test
+  for an action — but the draws still come from the illustrative triangular
+  bands, and the 90% / 80% / P10>0 thresholds are stated policy choices, not
+  fitted quantities. A verdict is a screening discipline on synthetic data, not
+  a guarantee that an accepted move will earn its € (or that a held one would
+  not have).
 
 ## A note on fit
 

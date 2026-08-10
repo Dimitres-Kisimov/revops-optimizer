@@ -275,6 +275,52 @@ RETURN
     IF ( _point > [Uplift Median (P50)], "Optimistic", "Conservative" )
 ```
 
+## 11. Price-move robustness gate (accept / hold)
+
+`build_star.py` emits a SKU-grain fact table, `fact_price_robustness`, **when
+the gate has been run** (`python -m revops.robustness`). One row per recommended
+price move, gated across the same Monte-Carlo draws as §10: carry rate,
+direction agreement, the P10/P50/P90 of executing the published price, and an
+`accept`/`hold` verdict with a named reason. Relate it
+`dim_sku[sku] 1 --- * fact_price_robustness[sku]` (single direction), like the
+prescription fact. Verdicts are **modelled on synthetic data — a screening
+discipline, not a guarantee.**
+
+```DAX
+Moves Accepted =
+CALCULATE ( COUNTROWS ( fact_price_robustness ),
+    fact_price_robustness[verdict] = "accept" )
+```
+
+```DAX
+Moves Held =
+CALCULATE ( COUNTROWS ( fact_price_robustness ),
+    fact_price_robustness[verdict] = "hold" )
+```
+
+The € behind each verdict (baseline annual uplift of the moves in that state):
+
+```DAX
+Accepted Uplift (EUR/yr) =
+CALCULATE ( SUM ( fact_price_robustness[baseline_uplift_annual_eur] ),
+    fact_price_robustness[verdict] = "accept" )
+```
+
+```DAX
+Held Uplift (EUR/yr) =
+CALCULATE ( SUM ( fact_price_robustness[baseline_uplift_annual_eur] ),
+    fact_price_robustness[verdict] = "hold" )
+```
+
+A table-visual helper — the worst-case € of a move, colour-coded by verdict
+(note: per-move P10s do **not** sum to a portfolio P10; the joint accepted-book
+band lives in the CLI/CSV summary, not in DAX):
+
+```DAX
+Move Downside (P10 EUR/yr) =
+SUM ( fact_price_robustness[uplift_p10_eur] )
+```
+
 ---
 
 ### Notes on correctness
