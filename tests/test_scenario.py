@@ -167,3 +167,7 @@ def test_tornado_csv_and_svg_byte_identical(tmp_path):
     assert s1 == s2
     assert s1.lstrip().startswith(b"<svg")
     assert s1.rstrip().endswith(b"</svg>")
+    # the honesty label and every driver name survive any redesign
+    assert b"illustrative, not a forecast" in s1
+    for r in rows:
+        assert r.driver.encode() in s1

@@ -273,6 +273,14 @@ def test_moves_svg_byte_identical(tmp_path):
     assert s1 == s2
     assert s1.lstrip().startswith(b"<svg")
     assert s1.rstrip().endswith(b"</svg>")
+    # the honesty label and the verdict text channel survive any redesign:
+    # every move's SKU is on the chart, and a hold's reason is printed so the
+    # verdict never travels on color alone
+    assert b"a screening discipline, not a guarantee." in s1
+    for mv in res.moves:
+        assert mv.sku.encode() in s1
+        if mv.verdict == "hold":
+            assert mv.reason.encode() in s1
 
 
 def test_result_shape_roundtrips():

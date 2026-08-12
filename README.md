@@ -11,7 +11,7 @@ and "optimization" projects that assume their inputs fall from the sky. The
 interesting engineering is the seam between them, so I made that seam the whole
 project.
 
-![RevOps Optimizer web dashboard — KPI tiles, uplift waterfall, assortment margin and promo allocation](docs/img/dashboard.png)
+![RevOps Optimizer web dashboard — the headline € beside its P10–P90 risk band, KPI tiles, uplift waterfall and assortment margin](docs/img/dashboard.png)
 
 I wrote it as part of an internship application in data & AI analytics. It runs
 end to end on synthetic-but-structured data with no API keys and no cloud.
@@ -165,7 +165,7 @@ decision. The verdicts are a **screening discipline on synthetic data under
 illustrative planning ranges, not a guarantee** — accepted means "robust under
 the modelled uncertainty", nothing more.
 
-![Price-move robustness gate — per-move P10..P90 of executing the published price across the joint draws, accept in green, hold in pink with the reason named](deliverables/price_move_robustness.svg)
+![Price-move robustness gate — per-move P10..P90 of executing the published price across the joint draws, accept in green, hold in red with the reason named](deliverables/price_move_robustness.svg)
 
 ## Run it
 
@@ -179,7 +179,7 @@ python -m revops.simulate --quiet # joint Monte-Carlo uplift risk band (CSV + SV
 python -m revops.robustness --quiet # accept/hold gate on every price move (CSV + SVG; ~a few min)
 python -m revops.report           # deliverables/ (json, xlsx, pdf, pptx, csv)
 python powerbi/build_star.py      # powerbi/data/ star-schema CSVs
-python web/build_data.py          # web/data.js  → open web/index.html offline
+python web/build_data.py          # web/data.js + web/risk.js → open web/index.html offline
 pytest -q                         # 69 tests, ~45s
 ```
 
@@ -211,7 +211,9 @@ headline point estimate); the robustness gate takes the same `--draws N`
   honestly in [`powerbi/README.md`](powerbi/README.md).
 - **`web/index.html`** — a dependency-free dashboard (hand-drawn SVG charts,
   light/dark, a promo what-if slider that re-solves the concave allocation in the
-  browser). Opens straight off disk.
+  browser; the headline € is shown beside its P10–P90 band and the accept/hold
+  gate table, read verbatim from the committed CSVs via `web/risk.js`). Opens
+  straight off disk.
 
 The [`docs/USE_CASE.md`](docs/USE_CASE.md) walks the whole quarterly decision as a
 narrative.

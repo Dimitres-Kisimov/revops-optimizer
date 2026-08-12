@@ -184,3 +184,7 @@ def test_distribution_svg_byte_identical(tmp_path):
     assert s1 == s2
     assert s1.lstrip().startswith(b"<svg")
     assert s1.rstrip().endswith(b"</svg>")
+    # the honesty label and the band/downside figures survive any redesign
+    assert b"illustrative, not a forecast" in s1
+    assert b"P10-P90 band" in s1
+    assert b"VaR(10%)" in s1 and b"CVaR(10%)" in s1

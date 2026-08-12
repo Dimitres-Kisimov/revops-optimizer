@@ -268,9 +268,14 @@ def write_summary_csv(res: SimResult, path: str | Path) -> Path:
     return p
 
 
-# palette shared with report.py / scenario.py / service_level.py / the web app
-_BLUE, _PINK, _GREEN, _INK, _GREY = (
-    "#2f6bff", "#ea4b71", "#1d9e6f", "#1f2933", "#9aa5b1")
+# "decision desk" tokens — dataviz-validated palette shared with the other SVG
+# deliverables and the web dashboard. One series (the total-uplift draws) wears
+# one hue: a blue sequential ramp, stepped darker inside the P10-P90 band so
+# the band itself is the designed object, not a footnote.
+_SURFACE, _INK, _SEC, _MUTED, _GRID = (
+    "#fcfcfb", "#0b0b0b", "#52514e", "#898781", "#e1e0d9")
+_BAND_IN, _BAND_OUT, _HEADLINE = "#5598e7", "#b7d3f6", "#104281"
+_FONT = "system-ui, Segoe UI, sans-serif"
 
 
 def _snapped_bounds(vmin: float, vmax: float, step: float = 5_000.0) -> tuple[float, float]:
@@ -293,13 +298,25 @@ def _histogram(draws: list[float], lo: float, hi: float, bins: int) -> list[int]
     return counts
 
 
+def _bar_top_path(x0: float, y0: float, w: float, h: float, r: float = 3.0) -> str:
+    """Column path: rounded at the data end (top), square at the baseline."""
+    r = min(r, w / 2, h)
+    if r < 0.75:
+        return f'M{x0:.1f} {y0 + h:.1f}V{y0:.1f}H{x0 + w:.1f}V{y0 + h:.1f}Z'
+    return (f'M{x0:.1f} {y0 + h:.1f}V{y0 + r:.1f}'
+            f'A{r:.1f} {r:.1f} 0 0 1 {x0 + r:.1f} {y0:.1f}H{x0 + w - r:.1f}'
+            f'A{r:.1f} {r:.1f} 0 0 1 {x0 + w:.1f} {y0 + r:.1f}V{y0 + h:.1f}Z')
+
+
 def render_distribution_svg(res: SimResult, path: str | Path, bins: int = 24) -> Path:
-    """Hand-drawn histogram of the total-uplift draws with the P10–P90 band
-    shaded, the median and the deterministic headline (point estimate) marked,
-    and a downside caption (VaR/CVaR). One x-axis (total uplift €). Deterministic."""
-    W, H = 760, 430
+    """Hand-drawn histogram of the total-uplift draws. The P10–P90 band is the
+    designed object: in-band bars wear the darker step of the one-hue ramp,
+    out-of-band bars the lighter step; the median, the band edges and the
+    deterministic headline (point estimate) are marked, with a downside caption
+    (VaR/CVaR). One x-axis (total uplift €). Deterministic."""
+    W, H = 760, 440
     ml, mr = 56, 24
-    top, plot_h = 92, 250
+    top, plot_h = 104, 246
     plot_w = W - ml - mr
 
     draws = res.draws_total_eur
@@ -318,62 +335,63 @@ def render_distribution_svg(res: SimResult, path: str | Path, bins: int = 24) ->
 
     s: list[str] = []
     s.append(f'<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" '
-             f'viewBox="0 0 {W} {H}" font-family="Segoe UI, Arial, sans-serif">')
-    s.append(f'<rect width="{W}" height="{H}" fill="white"/>')
-    s.append(f'<text x="{ml}" y="30" font-size="16" font-weight="700" '
+             f'viewBox="0 0 {W} {H}" font-family="{_FONT}">')
+    s.append(f'<rect x="0.5" y="0.5" width="{W - 1}" height="{H - 1}" rx="10" '
+             f'fill="{_SURFACE}" stroke="{_GRID}"/>')
+    s.append(f'<text x="{ml}" y="34" font-size="16" font-weight="700" '
              f'fill="{_INK}">Uplift risk band - joint Monte-Carlo ({res.n_draws} draws)</text>')
-    s.append(f'<text x="{ml}" y="48" font-size="11" fill="{_GREY}">Demand, cost, '
+    s.append(f'<text x="{ml}" y="52" font-size="11" fill="{_SEC}">Demand, cost, '
              f'elasticity &amp; decline risk drawn together; illustrative, not a forecast</text>')
-    s.append(f'<text x="{ml}" y="66" font-size="11" fill="{_INK}">P10-P90 band '
+    s.append(f'<text x="{ml}" y="70" font-size="11" fill="{_INK}">P10-P90 band '
              f'EUR {p10:,.0f} .. {p90:,.0f}/yr &#183; median EUR {p50:,.0f} &#183; '
              f'mean EUR {res.total.mean:,.0f}</text>')
 
-    # shaded P10-P90 confidence band
-    bx0, bx1 = x(p10), x(p90)
-    s.append(f'<rect x="{bx0:.1f}" y="{top}" width="{bx1 - bx0:.1f}" height="{plot_h}" '
-             f'fill="{_BLUE}" opacity="0.08"/>')
-
-    # y gridlines + labels
+    # y gridlines + labels (solid hairlines, recessive)
     for i in range(5):
         c = cmax * i / 4
         gy = y(c)
         s.append(f'<line x1="{ml}" y1="{gy:.1f}" x2="{ml + plot_w}" y2="{gy:.1f}" '
-                 f'stroke="#eef1f5" stroke-width="1"/>')
+                 f'stroke="{_GRID}" stroke-width="1"/>')
         s.append(f'<text x="{ml - 6}" y="{gy + 3:.1f}" font-size="9" '
-                 f'text-anchor="end" fill="{_GREY}">{c:.0f}</text>')
-    s.append(f'<text x="{ml}" y="{top - 10}" font-size="10" fill="{_INK}" '
+                 f'text-anchor="end" fill="{_MUTED}">{c:.0f}</text>')
+    s.append(f'<text x="{ml}" y="{top - 8}" font-size="10" fill="{_INK}" '
              f'font-weight="600">Draws</text>')
 
-    # histogram bars
+    # histogram bars — one hue, darker step inside the P10-P90 band, 2px gaps
     bar_w = plot_w / bins
     for k, c in enumerate(counts):
         if c <= 0:
             continue
         bx = ml + k * bar_w
         by = y(c)
-        s.append(f'<rect x="{bx + 0.6:.1f}" y="{by:.1f}" width="{bar_w - 1.2:.1f}" '
-                 f'height="{top + plot_h - by:.1f}" fill="{_BLUE}" opacity="0.55"/>')
+        mid = ax_lo + (k + 0.5) * (ax_hi - ax_lo) / bins
+        fill = _BAND_IN if p10 <= mid <= p90 else _BAND_OUT
+        s.append(f'<path d="{_bar_top_path(bx + 1.0, by, bar_w - 2.0, top + plot_h - by)}" '
+                 f'fill="{fill}"/>')
 
-    # markers: P10 / median / P90 (grey/ink/grey) + headline point estimate (green)
-    def vline(v: float, color: str, label: str, dash: str, weight: float) -> None:
+    # markers: P10 / P90 band edges, median, and the deterministic headline.
+    # Labels stagger onto two fixed rows so they never collide.
+    def vline(v: float, color: str, label: str, dash: str, weight: float,
+              row: int) -> None:
         vx = x(v)
         da = f' stroke-dasharray="{dash}"' if dash else ""
+        ly = top - 4 if row == 0 else top - 18
         s.append(f'<line x1="{vx:.1f}" y1="{top}" x2="{vx:.1f}" y2="{top + plot_h}" '
                  f'stroke="{color}" stroke-width="{weight}"{da}/>')
-        s.append(f'<text x="{vx:.1f}" y="{top - 2:.1f}" font-size="9.5" '
-                 f'text-anchor="middle" font-weight="700" fill="{color}">{label}</text>')
+        s.append(f'<text x="{vx:.1f}" y="{ly:.1f}" font-size="9.5" '
+                 f'text-anchor="middle" font-weight="700" fill="{_INK}">{label}</text>')
 
-    vline(p10, _GREY, f"P10 {p10 / 1000:.0f}k", "4 3", 1.2)
-    vline(p90, _GREY, f"P90 {p90 / 1000:.0f}k", "4 3", 1.2)
-    vline(p50, _INK, f"median {p50 / 1000:.0f}k", "", 1.6)
-    vline(point, _GREEN, f"headline {point / 1000:.0f}k", "5 3", 1.8)
+    vline(p10, _SEC, f"P10 {p10 / 1000:.0f}k", "4 3", 1.2, 0)
+    vline(p90, _SEC, f"P90 {p90 / 1000:.0f}k", "4 3", 1.2, 0)
+    vline(p50, _INK, f"median {p50 / 1000:.0f}k", "", 1.6, 0)
+    vline(point, _HEADLINE, f"headline {point / 1000:.0f}k", "5 3", 1.8, 1)
 
     # x-axis ticks
     for i in range(6):
         v = ax_lo + (ax_hi - ax_lo) * i / 5
         tx = x(v)
         s.append(f'<text x="{tx:.1f}" y="{top + plot_h + 18:.1f}" font-size="9" '
-                 f'text-anchor="middle" fill="{_GREY}">EUR {v / 1000:.0f}k</text>')
+                 f'text-anchor="middle" fill="{_MUTED}">EUR {v / 1000:.0f}k</text>')
     s.append(f'<text x="{ml + plot_w / 2:.1f}" y="{top + plot_h + 36:.1f}" font-size="10" '
              f'text-anchor="middle" fill="{_INK}">Total expected uplift (EUR / year)</text>')
 

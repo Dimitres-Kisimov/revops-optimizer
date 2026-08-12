@@ -332,9 +332,13 @@ def write_tornado_csv(rows: list[TornadoRow], path: str | Path) -> Path:
     return p
 
 
-# palette shared with report.py / service_level.py / the web dashboard
-_BLUE, _PINK, _GREEN, _INK, _GREY = (
-    "#2f6bff", "#ea4b71", "#1d9e6f", "#1f2933", "#9aa5b1")
+# "decision desk" tokens — dataviz-validated palette shared with the other SVG
+# deliverables and the web dashboard (see docs: blue<->red is the diverging pair;
+# ink/grid/surface are the chart-chrome tokens; system sans everywhere).
+_SURFACE, _INK, _SEC, _MUTED, _GRID = (
+    "#fcfcfb", "#0b0b0b", "#52514e", "#898781", "#e1e0d9")
+_BLUE, _RED = "#2a78d6", "#e34948"          # upside / downside diverging poles
+_FONT = "system-ui, Segoe UI, sans-serif"
 
 
 def _axis_bounds(vmin: float, vmax: float) -> tuple[float, float]:
@@ -347,13 +351,31 @@ def _axis_bounds(vmin: float, vmax: float) -> tuple[float, float]:
     return (math.floor(lo / step) * step, math.ceil(hi / step) * step)
 
 
+def _arm_path(x0: float, x1: float, y: float, h: float,
+              round_left: bool, round_right: bool, r: float = 4.0) -> str:
+    """Path for one tornado arm: 4px-rounded at the data end, square where it
+    meets the baseline split. Degenerates to a sliver rect when too narrow."""
+    w = x1 - x0
+    r = min(r, w / 2, h / 2)
+    if r < 0.75:
+        return (f'M{x0:.1f} {y:.1f}H{x1:.1f}V{y + h:.1f}H{x0:.1f}Z')
+    rl = r if round_left else 0.0
+    rr = r if round_right else 0.0
+    return (f'M{x0 + rl:.1f} {y:.1f}H{x1 - rr:.1f}'
+            f'A{rr:.1f} {rr:.1f} 0 0 1 {x1:.1f} {y + rr:.1f}'
+            f'V{y + h - rr:.1f}A{rr:.1f} {rr:.1f} 0 0 1 {x1 - rr:.1f} {y + h:.1f}'
+            f'H{x0 + rl:.1f}A{rl:.1f} {rl:.1f} 0 0 1 {x0:.1f} {y + h - rl:.1f}'
+            f'V{y + rl:.1f}A{rl:.1f} {rl:.1f} 0 0 1 {x0 + rl:.1f} {y:.1f}Z')
+
+
 def render_tornado_svg(rows: list[TornadoRow], baseline: float,
                        path: str | Path) -> Path:
     """Hand-drawn horizontal tornado: drivers ranked by swing, each a bar from
-    its low- to high-uplift outcome, split at the baseline into a downside (pink)
-    and an upside (green) segment. One x-axis (total uplift €). Deterministic."""
+    its low- to high-uplift outcome, split at the baseline into a downside (red)
+    and an upside (blue) segment — the diverging pair, split by a 2px surface
+    gap at the baseline. One x-axis (total uplift €). Deterministic."""
     W = 760
-    top, row_h, gap = 92, 26, 12
+    top, row_h, gap = 96, 20, 16
     n = len(rows)
     plot_h = n * (row_h + gap)
     H = top + plot_h + 60
@@ -369,25 +391,26 @@ def render_tornado_svg(rows: list[TornadoRow], baseline: float,
 
     s: list[str] = []
     s.append(f'<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" '
-             f'viewBox="0 0 {W} {H}" font-family="Segoe UI, Arial, sans-serif">')
-    s.append(f'<rect width="{W}" height="{H}" fill="white"/>')
-    s.append(f'<text x="{ml - 140}" y="30" font-size="16" font-weight="700" '
+             f'viewBox="0 0 {W} {H}" font-family="{_FONT}">')
+    s.append(f'<rect x="0.5" y="0.5" width="{W - 1}" height="{H - 1}" rx="10" '
+             f'fill="{_SURFACE}" stroke="{_GRID}"/>')
+    s.append(f'<text x="{ml - 140}" y="34" font-size="16" font-weight="700" '
              f'fill="{_INK}">Sensitivity of the expected uplift (tornado)</text>')
-    s.append(f'<text x="{ml - 140}" y="48" font-size="11" fill="{_GREY}">One-way '
+    s.append(f'<text x="{ml - 140}" y="52" font-size="11" fill="{_SEC}">One-way '
              f'sweep of each driver over a plausible planning band; illustrative, '
              f'not a forecast</text>')
-    s.append(f'<text x="{ml - 140}" y="66" font-size="11" fill="{_INK}">Baseline '
-             f'total EUR {baseline:,.0f}/yr - bars show downside (pink) vs upside '
-             f'(green)</text>')
+    s.append(f'<text x="{ml - 140}" y="70" font-size="11" fill="{_INK}">Baseline '
+             f'total EUR {baseline:,.0f}/yr - bars show downside (red) vs upside '
+             f'(blue)</text>')
 
-    # x gridlines + labels
+    # x gridlines + labels (solid hairlines, recessive)
     for i in range(5):
         v = ax_lo + (ax_hi - ax_lo) * i / 4
         gx = x(v)
         s.append(f'<line x1="{gx:.1f}" y1="{top}" x2="{gx:.1f}" y2="{top + plot_h}" '
-                 f'stroke="#eef1f5" stroke-width="1"/>')
+                 f'stroke="{_GRID}" stroke-width="1"/>')
         s.append(f'<text x="{gx:.1f}" y="{top + plot_h + 18:.1f}" font-size="9" '
-                 f'text-anchor="middle" fill="{_GREY}">EUR {v / 1000:.0f}k</text>')
+                 f'text-anchor="middle" fill="{_MUTED}">EUR {v / 1000:.0f}k</text>')
 
     # baseline reference line
     bx = x(baseline)
@@ -400,26 +423,27 @@ def render_tornado_svg(rows: list[TornadoRow], baseline: float,
         cy = top + i * (row_h + gap) + gap / 2
         yc = cy + row_h / 2
         lo_x, hi_x, b_x = x(r.low_uplift_eur), x(r.high_uplift_eur), bx
-        # downside segment (low .. min(baseline, high))
-        d_hi = min(b_x, hi_x)
-        if lo_x < d_hi - 0.1:
-            s.append(f'<rect x="{lo_x:.1f}" y="{cy:.1f}" width="{d_hi - lo_x:.1f}" '
-                     f'height="{row_h}" fill="{_PINK}" opacity="0.85"/>')
-        # upside segment (max(baseline, low) .. high)
-        u_lo = max(b_x, lo_x)
-        if hi_x > u_lo + 0.1:
-            s.append(f'<rect x="{u_lo:.1f}" y="{cy:.1f}" width="{hi_x - u_lo:.1f}" '
-                     f'height="{row_h}" fill="{_GREEN}" opacity="0.85"/>')
-        # driver label (left) + swing (right)
+        # downside segment (low .. min(baseline, high)); 1px shy of the split,
+        # never thinner than a visible 1.2px sliver (anchored at the data end)
+        if min(b_x, hi_x) - lo_x > 0.1:
+            d_hi = max(min(b_x - 1.0, hi_x), lo_x + 1.2)
+            s.append(f'<path d="{_arm_path(lo_x, d_hi, cy, row_h, True, hi_x < b_x)}" '
+                     f'fill="{_RED}"/>')
+        # upside segment (max(baseline, low) .. high); mirrored treatment
+        if hi_x - max(b_x, lo_x) > 0.1:
+            u_lo = min(max(b_x + 1.0, lo_x), hi_x - 1.2)
+            s.append(f'<path d="{_arm_path(u_lo, hi_x, cy, row_h, lo_x > b_x, True)}" '
+                     f'fill="{_BLUE}"/>')
+        # driver label (left) + swing (right) — text wears text tokens only
         s.append(f'<text x="{ml - 12}" y="{yc + 3:.1f}" font-size="11" '
                  f'text-anchor="end" fill="{_INK}">{r.driver}</text>')
         s.append(f'<text x="{ml + plot_w + 8}" y="{yc + 3:.1f}" font-size="10" '
                  f'fill="{_INK}">EUR {r.swing_eur:,.0f}</text>')
         # endpoint value labels
         s.append(f'<text x="{lo_x - 4:.1f}" y="{yc + 3:.1f}" font-size="8.5" '
-                 f'text-anchor="end" fill="{_GREY}">{r.low_uplift_eur / 1000:.0f}k</text>')
+                 f'text-anchor="end" fill="{_SEC}">{r.low_uplift_eur / 1000:.0f}k</text>')
         s.append(f'<text x="{hi_x + 4:.1f}" y="{yc + 3:.1f}" font-size="8.5" '
-                 f'text-anchor="start" fill="{_GREY}">{r.high_uplift_eur / 1000:.0f}k</text>')
+                 f'text-anchor="start" fill="{_SEC}">{r.high_uplift_eur / 1000:.0f}k</text>')
 
     s.append(f'<text x="{ml + plot_w / 2:.1f}" y="{H - 8}" font-size="10" '
              f'text-anchor="middle" fill="{_INK}">Total expected uplift (EUR / year)</text>')

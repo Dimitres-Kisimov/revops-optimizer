@@ -289,9 +289,15 @@ def write_moves_csv(res: RobustnessResult, path: str | Path) -> Path:
     return p
 
 
-# palette shared with report.py / scenario.py / simulate.py / the web app
-_BLUE, _PINK, _GREEN, _INK, _GREY = (
-    "#2f6bff", "#ea4b71", "#1d9e6f", "#1f2933", "#9aa5b1")
+# "decision desk" tokens — dataviz-validated palette shared with the other SVG
+# deliverables and the web dashboard. Accept/hold are *status* colors (reserved,
+# never series colors) and never travel alone: every verdict also carries its
+# text (agreement % or the named hold reason) and a shape (filled vs open
+# median dot), so the gate stays readable without color.
+_SURFACE, _INK, _SEC, _MUTED, _GRID = (
+    "#fcfcfb", "#0b0b0b", "#52514e", "#898781", "#e1e0d9")
+_GOOD, _HELD = "#0ca30c", "#d03b3b"
+_FONT = "system-ui, Segoe UI, sans-serif"
 
 
 def _axis_bounds(vmin: float, vmax: float, step: float = 500.0) -> tuple[float, float]:
@@ -311,12 +317,13 @@ def render_moves_svg(res: RobustnessResult, path: str | Path) -> Path:
     Deterministic."""
     rows = res.moves
     W = 760
-    top, row_h, gap = 96, 15, 7
+    top, row_h, gap = 116, 15, 7
     n = len(rows)
     plot_h = max(1, n) * (row_h + gap)
     H = top + plot_h + 64
     ml, mr = 150, 118
     plot_w = W - ml - mr
+    hx = ml - 130                              # header left edge
 
     vals = [0.0]
     for r in rows:
@@ -328,28 +335,34 @@ def render_moves_svg(res: RobustnessResult, path: str | Path) -> Path:
 
     s: list[str] = []
     s.append(f'<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" '
-             f'viewBox="0 0 {W} {H}" font-family="Segoe UI, Arial, sans-serif">')
-    s.append(f'<rect width="{W}" height="{H}" fill="white"/>')
-    s.append(f'<text x="{ml - 130}" y="30" font-size="16" font-weight="700" '
+             f'viewBox="0 0 {W} {H}" font-family="{_FONT}">')
+    s.append(f'<rect x="0.5" y="0.5" width="{W - 1}" height="{H - 1}" rx="10" '
+             f'fill="{_SURFACE}" stroke="{_GRID}"/>')
+    s.append(f'<text x="{hx}" y="34" font-size="16" font-weight="700" '
              f'fill="{_INK}">Price-move robustness gate ({res.n_draws} joint draws)</text>')
-    s.append(f'<text x="{ml - 130}" y="48" font-size="11" fill="{_GREY}">Whisker '
+    s.append(f'<text x="{hx}" y="52" font-size="11" fill="{_SEC}">Whisker '
              f'P10..P90 of executing the published price across the Monte-Carlo '
              f'draws (EUR 0 when delisted) &#183; dot = median &#183; tick = baseline</text>')
-    s.append(f'<text x="{ml - 130}" y="66" font-size="11" fill="{_INK}">'
-             f'<tspan fill="{_GREEN}" font-weight="700">accept {res.n_accept}</tspan>'
+    # verdict key: status dot + ink text (never color alone), one line per verdict
+    s.append(f'<circle cx="{hx + 4}" cy="{66.5}" r="3.2" fill="{_GOOD}"/>')
+    s.append(f'<text x="{hx + 12}" y="70" font-size="11" fill="{_INK}">'
+             f'<tspan font-weight="700">accept {res.n_accept}</tspan>'
              f' (carry &#8805; {ACCEPT_MIN_CARRY * 100:.0f}%, same move &#8805; '
-             f'{ACCEPT_MIN_AGREEMENT * 100:.0f}%, P10 &gt; 0) &#183; '
-             f'<tspan fill="{_PINK}" font-weight="700">hold {res.n_hold}</tspan>'
+             f'{ACCEPT_MIN_AGREEMENT * 100:.0f}%, P10 &gt; 0)</text>')
+    s.append(f'<circle cx="{hx + 4}" cy="{84.5}" r="3.2" fill="{_SURFACE}" '
+             f'stroke="{_HELD}" stroke-width="1.8"/>')
+    s.append(f'<text x="{hx + 12}" y="88" font-size="11" fill="{_INK}">'
+             f'<tspan font-weight="700">hold {res.n_hold}</tspan>'
              f' &#183; accepted book P10 EUR {res.accepted_book_p10_eur:,.0f}/yr</text>')
 
-    # x gridlines + labels
+    # x gridlines + labels (solid hairlines, recessive)
     for i in range(5):
         v = ax_lo + (ax_hi - ax_lo) * i / 4
         gx = x(v)
         s.append(f'<line x1="{gx:.1f}" y1="{top}" x2="{gx:.1f}" y2="{top + plot_h}" '
-                 f'stroke="#eef1f5" stroke-width="1"/>')
+                 f'stroke="{_GRID}" stroke-width="1"/>')
         s.append(f'<text x="{gx:.1f}" y="{top + plot_h + 18:.1f}" font-size="9" '
-                 f'text-anchor="middle" fill="{_GREY}">EUR {v / 1000:.1f}k</text>')
+                 f'text-anchor="middle" fill="{_MUTED}">EUR {v / 1000:.1f}k</text>')
 
     # zero reference line
     zx = x(0.0)
@@ -358,31 +371,44 @@ def render_moves_svg(res: RobustnessResult, path: str | Path) -> Path:
 
     for i, r in enumerate(rows):
         yc = top + i * (row_h + gap) + gap / 2 + row_h / 2
-        color = _GREEN if r.verdict == VERDICT_ACCEPT else _PINK
+        ok = r.verdict == VERDICT_ACCEPT
+        color = _GOOD if ok else _HELD
         lo_x, hi_x = x(r.uplift_p10_eur), x(r.uplift_p90_eur)
-        # whisker P10..P90
+        # whisker P10..P90: soft band + crisp end ticks in the verdict color
         s.append(f'<line x1="{lo_x:.1f}" y1="{yc:.1f}" x2="{hi_x:.1f}" y2="{yc:.1f}" '
-                 f'stroke="{color}" stroke-width="4" opacity="0.45"/>')
+                 f'stroke="{color}" stroke-width="5" stroke-linecap="round" '
+                 f'opacity="0.3"/>')
+        for ex in (lo_x, hi_x):
+            s.append(f'<line x1="{ex:.1f}" y1="{yc - 3.5:.1f}" x2="{ex:.1f}" '
+                     f'y2="{yc + 3.5:.1f}" stroke="{color}" stroke-width="1.5"/>')
         # baseline tick
         bx = x(r.baseline_uplift_annual_eur)
         s.append(f'<line x1="{bx:.1f}" y1="{yc - 5:.1f}" x2="{bx:.1f}" y2="{yc + 5:.1f}" '
                  f'stroke="{_INK}" stroke-width="1.4"/>')
-        # median dot
-        s.append(f'<circle cx="{x(r.uplift_p50_eur):.1f}" cy="{yc:.1f}" r="3.2" '
-                 f'fill="{color}"/>')
+        # median dot — filled for accept, open for hold (shape carries the
+        # verdict alongside color), 2px surface ring either way
+        mx = x(r.uplift_p50_eur)
+        if ok:
+            s.append(f'<circle cx="{mx:.1f}" cy="{yc:.1f}" r="3.2" fill="{color}" '
+                     f'stroke="{_SURFACE}" stroke-width="1.6"/>')
+        else:
+            s.append(f'<circle cx="{mx:.1f}" cy="{yc:.1f}" r="3.2" fill="{_SURFACE}" '
+                     f'stroke="{color}" stroke-width="1.8"/>')
         # left label: SKU + the move itself
         s.append(f'<text x="{ml - 8}" y="{yc + 3:.1f}" font-size="10" '
                  f'text-anchor="end" fill="{_INK}">{r.sku} {r.baseline_change_pct:+.1f}%</text>')
-        # right label: verdict (accept -> agreement, hold -> reason)
+        # right label: verdict dot + ink text (accept -> agreement, hold -> reason)
         note = (f"{r.direction_agreement * 100:.0f}% same move"
-                if r.verdict == VERDICT_ACCEPT else r.reason)
-        s.append(f'<text x="{ml + plot_w + 8}" y="{yc + 3:.1f}" font-size="9.5" '
-                 f'fill="{color}" font-weight="600">{note}</text>')
+                if ok else r.reason)
+        s.append(f'<circle cx="{ml + plot_w + 10:.1f}" cy="{yc - 0.5:.1f}" r="2.5" '
+                 f'fill="{color}"/>')
+        s.append(f'<text x="{ml + plot_w + 16}" y="{yc + 3:.1f}" font-size="9.5" '
+                 f'fill="{_SEC}" font-weight="600">{note}</text>')
 
     s.append(f'<text x="{ml + plot_w / 2:.1f}" y="{H - 28}" font-size="10" '
              f'text-anchor="middle" fill="{_INK}">Annual EUR of executing the '
              f'published price (EUR 0 when the SKU is delisted)</text>')
-    s.append(f'<text x="{ml - 130}" y="{H - 10}" font-size="10" fill="{_GREY}">'
+    s.append(f'<text x="{hx}" y="{H - 10}" font-size="10" fill="{_MUTED}">'
              f'Modelled on synthetic data under illustrative planning ranges - '
              f'a screening discipline, not a guarantee.</text>')
     s.append('</svg>')

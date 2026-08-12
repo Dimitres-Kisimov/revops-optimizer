@@ -123,6 +123,10 @@ def test_csv_and_svg_are_byte_identical_across_runs(tmp_path):
     assert s1 == s2
     assert s1.lstrip().startswith(b"<svg")
     assert s1.rstrip().endswith(b"</svg>")
+    # the honesty label and the series legend survive any redesign
+    assert b"illustrative monthly cost rates (not a guarantee)" in s1
+    for label in (b">Total<", b">Holding<", b">Stockout<"):
+        assert label in s1
 
 
 # --------------------------------------------------------------------------- #

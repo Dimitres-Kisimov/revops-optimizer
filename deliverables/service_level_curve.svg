@@ -1,47 +1,47 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="760" height="520" viewBox="0 0 760 520" font-family="Segoe UI, Arial, sans-serif">
-<rect width="760" height="520" fill="white"/>
-<text x="70" y="26" font-size="16" font-weight="700" fill="#1f2933">Forecast uncertainty - service-level trade-off</text>
-<text x="70" y="44" font-size="11" fill="#9aa5b1">Empirical forecast residuals; illustrative monthly cost rates (not a guarantee)</text>
-<line x1="70" y1="254.0" x2="736" y2="254.0" stroke="#eef1f5" stroke-width="1"/>
-<text x="64" y="257.0" font-size="9" text-anchor="end" fill="#9aa5b1">0</text>
-<line x1="70" y1="204.0" x2="736" y2="204.0" stroke="#eef1f5" stroke-width="1"/>
-<text x="64" y="207.0" font-size="9" text-anchor="end" fill="#9aa5b1">500</text>
-<line x1="70" y1="154.0" x2="736" y2="154.0" stroke="#eef1f5" stroke-width="1"/>
-<text x="64" y="157.0" font-size="9" text-anchor="end" fill="#9aa5b1">1,000</text>
-<line x1="70" y1="104.0" x2="736" y2="104.0" stroke="#eef1f5" stroke-width="1"/>
-<text x="64" y="107.0" font-size="9" text-anchor="end" fill="#9aa5b1">1,500</text>
-<line x1="70" y1="54.0" x2="736" y2="54.0" stroke="#eef1f5" stroke-width="1"/>
-<text x="64" y="57.0" font-size="9" text-anchor="end" fill="#9aa5b1">2,000</text>
-<text x="70" y="46" font-size="10" fill="#1f2933" font-weight="600">Cost EUR / month</text>
-<line x1="630.8" y1="54" x2="630.8" y2="470" stroke="#1f2933" stroke-width="1" stroke-dasharray="4 3" opacity="0.55"/>
-<text x="630.8" y="46" font-size="10" text-anchor="middle" font-weight="700" fill="#1f2933">reco 96%</text>
-<polyline points="70.0,229.2 105.1,228.5 140.1,227.8 175.2,226.5 210.2,225.3 245.3,224.1 280.3,222.7 315.4,221.4 350.4,219.6 385.5,218.5 420.5,216.4 455.6,215.0 490.6,213.1 525.7,211.5 560.7,208.7 595.8,205.1 630.8,202.3 665.9,199.1 700.9,195.0 736.0,190.0" fill="none" stroke="#2f6bff" stroke-width="2"/>
-<polyline points="70.0,178.1 105.1,181.6 140.1,184.8 175.2,190.0 210.2,195.0 245.3,199.7 280.3,204.6 315.4,208.8 350.4,214.3 385.5,217.5 420.5,222.8 455.6,226.2 490.6,230.1 525.7,233.0 560.7,237.5 595.8,242.2 630.8,245.3 665.9,248.0 700.9,250.5 736.0,252.4" fill="none" stroke="#ea4b71" stroke-width="2" stroke-dasharray="5 3"/>
-<polyline points="70.0,153.3 105.1,156.1 140.1,158.6 175.2,162.6 210.2,166.3 245.3,169.8 280.3,173.3 315.4,176.2 350.4,179.9 385.5,182.0 420.5,185.2 455.6,187.2 490.6,189.2 525.7,190.6 560.7,192.2 595.8,193.4 630.8,193.6 665.9,193.1 700.9,191.5 736.0,188.4" fill="none" stroke="#1f2933" stroke-width="2.6"/>
-<circle cx="630.8" cy="193.6" r="4.5" fill="white" stroke="#1f2933" stroke-width="2"/>
-<line x1="78" y1="66" x2="96" y2="66" stroke="#1f2933" stroke-width="2.4"/>
-<text x="101" y="69" font-size="10" fill="#1f2933">Total</text>
-<line x1="156" y1="66" x2="174" y2="66" stroke="#2f6bff" stroke-width="2.4"/>
-<text x="179" y="69" font-size="10" fill="#1f2933">Holding</text>
-<line x1="234" y1="66" x2="252" y2="66" stroke="#ea4b71" stroke-width="2.4" stroke-dasharray="5 3"/>
-<text x="257" y="69" font-size="10" fill="#1f2933">Stockout</text>
-<line x1="70" y1="470.0" x2="736" y2="470.0" stroke="#eef1f5" stroke-width="1"/>
-<text x="64" y="473.0" font-size="9" text-anchor="end" fill="#9aa5b1">80%</text>
-<line x1="70" y1="432.5" x2="736" y2="432.5" stroke="#eef1f5" stroke-width="1"/>
-<text x="64" y="435.5" font-size="9" text-anchor="end" fill="#9aa5b1">85%</text>
-<line x1="70" y1="395.0" x2="736" y2="395.0" stroke="#eef1f5" stroke-width="1"/>
-<text x="64" y="398.0" font-size="9" text-anchor="end" fill="#9aa5b1">90%</text>
-<line x1="70" y1="357.5" x2="736" y2="357.5" stroke="#eef1f5" stroke-width="1"/>
-<text x="64" y="360.5" font-size="9" text-anchor="end" fill="#9aa5b1">95%</text>
-<line x1="70" y1="320.0" x2="736" y2="320.0" stroke="#eef1f5" stroke-width="1"/>
-<text x="64" y="323.0" font-size="9" text-anchor="end" fill="#9aa5b1">100%</text>
-<text x="70" y="312" font-size="10" fill="#1f2933" font-weight="600">Expected unit fill rate</text>
-<polyline points="70.0,366.2 105.1,364.1 140.1,362.1 175.2,359.0 210.2,355.9 245.3,353.0 280.3,350.1 315.4,347.5 350.4,344.2 385.5,342.2 420.5,339.0 455.6,336.9 490.6,334.6 525.7,332.8 560.7,330.1 595.8,327.2 630.8,325.3 665.9,323.7 700.9,322.1 736.0,321.0" fill="none" stroke="#1d9e6f" stroke-width="2.6"/>
-<circle cx="630.8" cy="325.3" r="4.5" fill="white" stroke="#1d9e6f" stroke-width="2"/>
-<text x="637.8" y="319.3" font-size="10" font-weight="700" fill="#1d9e6f">99.3%</text>
-<text x="70.0" y="486.0" font-size="9" text-anchor="middle" fill="#9aa5b1">80%</text>
-<text x="245.3" y="486.0" font-size="9" text-anchor="middle" fill="#9aa5b1">85%</text>
-<text x="420.5" y="486.0" font-size="9" text-anchor="middle" fill="#9aa5b1">90%</text>
-<text x="595.8" y="486.0" font-size="9" text-anchor="middle" fill="#9aa5b1">95%</text>
-<text x="403.0" y="514" font-size="10" text-anchor="middle" fill="#1f2933">Target service level</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="552" viewBox="0 0 760 552" font-family="system-ui, Segoe UI, sans-serif">
+<rect x="0.5" y="0.5" width="759" height="551" rx="10" fill="#fcfcfb" stroke="#e1e0d9"/>
+<text x="70" y="30" font-size="16" font-weight="700" fill="#0b0b0b">Forecast uncertainty - service-level trade-off</text>
+<text x="70" y="48" font-size="11" fill="#52514e">Empirical forecast residuals; illustrative monthly cost rates (not a guarantee)</text>
+<line x1="70" y1="280.0" x2="736" y2="280.0" stroke="#e1e0d9" stroke-width="1"/>
+<text x="64" y="283.0" font-size="9" text-anchor="end" fill="#898781">0</text>
+<line x1="70" y1="231.0" x2="736" y2="231.0" stroke="#e1e0d9" stroke-width="1"/>
+<text x="64" y="234.0" font-size="9" text-anchor="end" fill="#898781">500</text>
+<line x1="70" y1="182.0" x2="736" y2="182.0" stroke="#e1e0d9" stroke-width="1"/>
+<text x="64" y="185.0" font-size="9" text-anchor="end" fill="#898781">1,000</text>
+<line x1="70" y1="133.0" x2="736" y2="133.0" stroke="#e1e0d9" stroke-width="1"/>
+<text x="64" y="136.0" font-size="9" text-anchor="end" fill="#898781">1,500</text>
+<line x1="70" y1="84.0" x2="736" y2="84.0" stroke="#e1e0d9" stroke-width="1"/>
+<text x="64" y="87.0" font-size="9" text-anchor="end" fill="#898781">2,000</text>
+<text x="70" y="74" font-size="10" fill="#0b0b0b" font-weight="600">Cost EUR / month</text>
+<line x1="630.8" y1="84" x2="630.8" y2="502" stroke="#0b0b0b" stroke-width="1" stroke-dasharray="4 3" opacity="0.55"/>
+<text x="630.8" y="74" font-size="10" text-anchor="middle" font-weight="700" fill="#0b0b0b">reco 96%</text>
+<polyline points="70.0,255.7 105.1,255.0 140.1,254.3 175.2,253.1 210.2,251.9 245.3,250.7 280.3,249.3 315.4,248.1 350.4,246.3 385.5,245.2 420.5,243.2 455.6,241.7 490.6,239.9 525.7,238.4 560.7,235.6 595.8,232.1 630.8,229.3 665.9,226.2 700.9,222.2 736.0,217.3" fill="none" stroke="#eb6834" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="70.0,205.6 105.1,209.0 140.1,212.2 175.2,217.3 210.2,222.2 245.3,226.8 280.3,231.6 315.4,235.7 350.4,241.1 385.5,244.2 420.5,249.4 455.6,252.8 490.6,256.5 525.7,259.5 560.7,263.8 595.8,268.5 630.8,271.5 665.9,274.1 700.9,276.6 736.0,278.4" fill="none" stroke="#1baf7a" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="70.0,181.3 105.1,184.0 140.1,186.5 175.2,190.4 210.2,194.1 245.3,197.5 280.3,200.9 315.4,203.8 350.4,207.4 385.5,209.4 420.5,212.6 455.6,214.5 490.6,216.5 525.7,217.8 560.7,219.4 595.8,220.6 630.8,220.8 665.9,220.3 700.9,218.8 736.0,215.7" fill="none" stroke="#2a78d6" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="630.8" cy="220.8" r="4.5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"/>
+<line x1="78" y1="96" x2="96" y2="96" stroke="#2a78d6" stroke-width="2.4" stroke-linecap="round"/>
+<text x="101" y="99" font-size="10" fill="#0b0b0b">Total</text>
+<line x1="156" y1="96" x2="174" y2="96" stroke="#eb6834" stroke-width="2.4" stroke-linecap="round"/>
+<text x="179" y="99" font-size="10" fill="#0b0b0b">Holding</text>
+<line x1="234" y1="96" x2="252" y2="96" stroke="#1baf7a" stroke-width="2.4" stroke-linecap="round"/>
+<text x="257" y="99" font-size="10" fill="#0b0b0b">Stockout</text>
+<line x1="70" y1="502.0" x2="736" y2="502.0" stroke="#e1e0d9" stroke-width="1"/>
+<text x="64" y="505.0" font-size="9" text-anchor="end" fill="#898781">80%</text>
+<line x1="70" y1="464.5" x2="736" y2="464.5" stroke="#e1e0d9" stroke-width="1"/>
+<text x="64" y="467.5" font-size="9" text-anchor="end" fill="#898781">85%</text>
+<line x1="70" y1="427.0" x2="736" y2="427.0" stroke="#e1e0d9" stroke-width="1"/>
+<text x="64" y="430.0" font-size="9" text-anchor="end" fill="#898781">90%</text>
+<line x1="70" y1="389.5" x2="736" y2="389.5" stroke="#e1e0d9" stroke-width="1"/>
+<text x="64" y="392.5" font-size="9" text-anchor="end" fill="#898781">95%</text>
+<line x1="70" y1="352.0" x2="736" y2="352.0" stroke="#e1e0d9" stroke-width="1"/>
+<text x="64" y="355.0" font-size="9" text-anchor="end" fill="#898781">100%</text>
+<text x="70" y="342" font-size="10" fill="#0b0b0b" font-weight="600">Expected unit fill rate</text>
+<polyline points="70.0,398.2 105.1,396.1 140.1,394.1 175.2,391.0 210.2,387.9 245.3,385.0 280.3,382.1 315.4,379.5 350.4,376.2 385.5,374.2 420.5,371.0 455.6,368.9 490.6,366.6 525.7,364.8 560.7,362.1 595.8,359.2 630.8,357.3 665.9,355.7 700.9,354.1 736.0,353.0" fill="none" stroke="#2a78d6" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="630.8" cy="357.3" r="4.5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"/>
+<text x="638.8" y="350.3" font-size="10" font-weight="700" fill="#0b0b0b">99.3%</text>
+<text x="70.0" y="518.0" font-size="9" text-anchor="middle" fill="#898781">80%</text>
+<text x="245.3" y="518.0" font-size="9" text-anchor="middle" fill="#898781">85%</text>
+<text x="420.5" y="518.0" font-size="9" text-anchor="middle" fill="#898781">90%</text>
+<text x="595.8" y="518.0" font-size="9" text-anchor="middle" fill="#898781">95%</text>
+<text x="403.0" y="544" font-size="10" text-anchor="middle" fill="#0b0b0b">Target service level</text>
 </svg>

@@ -219,9 +219,14 @@ def write_curve_csv(curve: list[ServiceLevelPoint], path: str | Path) -> Path:
     return p
 
 
-# palette shared with report.py / the web dashboard (one project system)
-_BLUE, _PINK, _GREEN, _INK, _GREY = (
-    "#2f6bff", "#ea4b71", "#1d9e6f", "#1f2933", "#9aa5b1")
+# "decision desk" tokens — dataviz-validated palette shared with the other SVG
+# deliverables and the web dashboard. Categorical slots 1-3 (blue/orange/aqua)
+# carry the three cost series; the fill-rate panel is its own single-series
+# chart and restarts at slot 1.
+_SURFACE, _INK, _SEC, _MUTED, _GRID = (
+    "#fcfcfb", "#0b0b0b", "#52514e", "#898781", "#e1e0d9")
+_BLUE, _ORANGE, _AQUA = "#2a78d6", "#eb6834", "#1baf7a"
+_FONT = "system-ui, Segoe UI, sans-serif"
 
 
 def _nice_top(v: float) -> float:
@@ -242,7 +247,7 @@ def render_curve_svg(curve: list[ServiceLevelPoint], recommended: dict,
     """Hand-drawn SVG: two stacked panels sharing the service-level x-axis (one
     y-axis each — never a dual axis). Top: illustrative cost per month (total,
     holding, stockout). Bottom: expected unit fill rate. Deterministic output."""
-    W, H = 760, 520
+    W, H = 760, 552
     ml, mr = 70, 24
     plot_w = W - ml - mr
     x0 = curve[0].service_level * 100
@@ -253,14 +258,14 @@ def render_curve_svg(curve: list[ServiceLevelPoint], recommended: dict,
         return ml + (sl_pct - x0) / (x1 - x0) * plot_w
 
     # ---- top panel: cost (EUR/month) ----
-    t_top, t_h = 54, 200
+    t_top, t_h = 84, 196
     cost_max = _nice_top(max(p.total_cost_eur_month for p in curve))
 
     def ty(v: float) -> float:
         return t_top + t_h - (v / cost_max) * t_h
 
     # ---- bottom panel: fill rate (%) ----
-    b_top, b_h = 320, 150
+    b_top, b_h = 352, 150
     fr_vals = [p.expected_fill_rate * 100 for p in curve]
     fr_lo = min(80.0, min(fr_vals) - 1)
     fr_hi = 100.0
@@ -273,68 +278,72 @@ def render_curve_svg(curve: list[ServiceLevelPoint], recommended: dict,
 
     s: list[str] = []
     s.append(f'<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" '
-             f'viewBox="0 0 {W} {H}" font-family="Segoe UI, Arial, sans-serif">')
-    s.append(f'<rect width="{W}" height="{H}" fill="white"/>')
-    s.append(f'<text x="{ml}" y="26" font-size="16" font-weight="700" '
+             f'viewBox="0 0 {W} {H}" font-family="{_FONT}">')
+    s.append(f'<rect x="0.5" y="0.5" width="{W - 1}" height="{H - 1}" rx="10" '
+             f'fill="{_SURFACE}" stroke="{_GRID}"/>')
+    s.append(f'<text x="{ml}" y="30" font-size="16" font-weight="700" '
              f'fill="{_INK}">Forecast uncertainty - service-level trade-off</text>')
-    s.append(f'<text x="{ml}" y="44" font-size="11" fill="{_GREY}">Empirical '
+    s.append(f'<text x="{ml}" y="48" font-size="11" fill="{_SEC}">Empirical '
              f'forecast residuals; illustrative monthly cost rates (not a guarantee)</text>')
 
-    # top gridlines + y labels
+    # top gridlines + y labels (solid hairlines, recessive)
     for i in range(5):
         v = cost_max * i / 4
         y = ty(v)
         s.append(f'<line x1="{ml}" y1="{y:.1f}" x2="{ml + plot_w}" y2="{y:.1f}" '
-                 f'stroke="#eef1f5" stroke-width="1"/>')
+                 f'stroke="{_GRID}" stroke-width="1"/>')
         s.append(f'<text x="{ml - 6}" y="{y + 3:.1f}" font-size="9" '
-                 f'text-anchor="end" fill="{_GREY}">{v:,.0f}</text>')
-    s.append(f'<text x="{ml}" y="{t_top - 8}" font-size="10" fill="{_INK}" '
+                 f'text-anchor="end" fill="{_MUTED}">{v:,.0f}</text>')
+    s.append(f'<text x="{ml}" y="{t_top - 10}" font-size="10" fill="{_INK}" '
              f'font-weight="600">Cost EUR / month</text>')
 
     # recommended vertical marker (both panels)
     rx = sx(reco_x)
     s.append(f'<line x1="{rx:.1f}" y1="{t_top}" x2="{rx:.1f}" y2="{b_top + b_h}" '
              f'stroke="{_INK}" stroke-width="1" stroke-dasharray="4 3" opacity="0.55"/>')
-    s.append(f'<text x="{rx:.1f}" y="{t_top - 8}" font-size="10" text-anchor="middle" '
+    s.append(f'<text x="{rx:.1f}" y="{t_top - 10}" font-size="10" text-anchor="middle" '
              f'font-weight="700" fill="{_INK}">reco {reco_x:.0f}%</text>')
 
-    # cost series: total (INK, thick), holding (BLUE), stockout (PINK, dashed)
+    # cost series — categorical slots in sequence: total (blue, emphasized),
+    # holding (orange), stockout (aqua); 2px lines, round joins
     s.append(f'<polyline points="{poly(lambda p: ty(p.holding_cost_eur_month))}" '
-             f'fill="none" stroke="{_BLUE}" stroke-width="2"/>')
+             f'fill="none" stroke="{_ORANGE}" stroke-width="2" '
+             f'stroke-linejoin="round" stroke-linecap="round"/>')
     s.append(f'<polyline points="{poly(lambda p: ty(p.expected_stockout_cost_eur_month))}" '
-             f'fill="none" stroke="{_PINK}" stroke-width="2" stroke-dasharray="5 3"/>')
+             f'fill="none" stroke="{_AQUA}" stroke-width="2" '
+             f'stroke-linejoin="round" stroke-linecap="round"/>')
     s.append(f'<polyline points="{poly(lambda p: ty(p.total_cost_eur_month))}" '
-             f'fill="none" stroke="{_INK}" stroke-width="2.6"/>')
-    # highlight recommended total-cost point
+             f'fill="none" stroke="{_BLUE}" stroke-width="2.5" '
+             f'stroke-linejoin="round" stroke-linecap="round"/>')
+    # highlight recommended total-cost point: series-color dot, surface ring
     rp = min(curve, key=lambda p: abs(p.service_level * 100 - reco_x))
     s.append(f'<circle cx="{rx:.1f}" cy="{ty(rp.total_cost_eur_month):.1f}" r="4.5" '
-             f'fill="white" stroke="{_INK}" stroke-width="2"/>')
-    # legend (identity not by color alone: each line labelled)
+             f'fill="{_BLUE}" stroke="{_SURFACE}" stroke-width="2"/>')
+    # legend (three series -> always present; text wears ink, marks carry color)
     lx, ly = ml + 8, t_top + 12
-    for label, color, dash in (("Total", _INK, ""), ("Holding", _BLUE, ""),
-                               ("Stockout", _PINK, "5 3")):
-        da = f' stroke-dasharray="{dash}"' if dash else ""
+    for label, color in (("Total", _BLUE), ("Holding", _ORANGE), ("Stockout", _AQUA)):
         s.append(f'<line x1="{lx}" y1="{ly}" x2="{lx + 18}" y2="{ly}" stroke="{color}" '
-                 f'stroke-width="2.4"{da}/>')
+                 f'stroke-width="2.4" stroke-linecap="round"/>')
         s.append(f'<text x="{lx + 23}" y="{ly + 3}" font-size="10" fill="{_INK}">{label}</text>')
         lx += 78
 
-    # bottom panel: fill rate
+    # bottom panel: fill rate (its own single-series chart -> slot 1 again)
     for i in range(5):
         v = fr_lo + (fr_hi - fr_lo) * i / 4
         y = by(v)
         s.append(f'<line x1="{ml}" y1="{y:.1f}" x2="{ml + plot_w}" y2="{y:.1f}" '
-                 f'stroke="#eef1f5" stroke-width="1"/>')
+                 f'stroke="{_GRID}" stroke-width="1"/>')
         s.append(f'<text x="{ml - 6}" y="{y + 3:.1f}" font-size="9" '
-                 f'text-anchor="end" fill="{_GREY}">{v:.0f}%</text>')
-    s.append(f'<text x="{ml}" y="{b_top - 8}" font-size="10" fill="{_INK}" '
+                 f'text-anchor="end" fill="{_MUTED}">{v:.0f}%</text>')
+    s.append(f'<text x="{ml}" y="{b_top - 10}" font-size="10" fill="{_INK}" '
              f'font-weight="600">Expected unit fill rate</text>')
     s.append(f'<polyline points="{poly(lambda p: by(p.expected_fill_rate * 100))}" '
-             f'fill="none" stroke="{_GREEN}" stroke-width="2.6"/>')
+             f'fill="none" stroke="{_BLUE}" stroke-width="2.5" '
+             f'stroke-linejoin="round" stroke-linecap="round"/>')
     s.append(f'<circle cx="{rx:.1f}" cy="{by(rp.expected_fill_rate * 100):.1f}" r="4.5" '
-             f'fill="white" stroke="{_GREEN}" stroke-width="2"/>')
-    s.append(f'<text x="{rx + 7:.1f}" y="{by(rp.expected_fill_rate * 100) - 6:.1f}" '
-             f'font-size="10" font-weight="700" fill="{_GREEN}">'
+             f'fill="{_BLUE}" stroke="{_SURFACE}" stroke-width="2"/>')
+    s.append(f'<text x="{rx + 8:.1f}" y="{by(rp.expected_fill_rate * 100) - 7:.1f}" '
+             f'font-size="10" font-weight="700" fill="{_INK}">'
              f'{rp.expected_fill_rate * 100:.1f}%</text>')
 
     # shared x-axis ticks (service level %)
@@ -343,8 +352,8 @@ def render_curve_svg(curve: list[ServiceLevelPoint], recommended: dict,
         if int(round(sl_pct)) % 5 == 0:
             x = sx(sl_pct)
             s.append(f'<text x="{x:.1f}" y="{b_top + b_h + 16:.1f}" font-size="9" '
-                     f'text-anchor="middle" fill="{_GREY}">{sl_pct:.0f}%</text>')
-    s.append(f'<text x="{ml + plot_w / 2:.1f}" y="{H - 6}" font-size="10" '
+                     f'text-anchor="middle" fill="{_MUTED}">{sl_pct:.0f}%</text>')
+    s.append(f'<text x="{ml + plot_w / 2:.1f}" y="{H - 8}" font-size="10" '
              f'text-anchor="middle" fill="{_INK}">Target service level</text>')
     s.append('</svg>')
     p = Path(path)
