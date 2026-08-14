@@ -18,6 +18,8 @@ document.documentElement.setAttribute("data-theme",d?"dark":"light");})();
     --border:rgba(11,11,11,.10);
     --c-pricing:#2a78d6; --c-promo:#eb6834; --c-assort:#1baf7a;
     --good:#0ca30c; --held:#d03b3b;
+    /* diverging pair for polarity (bridge steps: adds / subtracts) */
+    --up:#2a78d6; --down:#e34948;
     --neutral-mark:#c3c2b7;
     --band:rgba(42,120,214,.16);
     --shadow:0 1px 2px rgba(11,11,11,.05),0 4px 14px rgba(11,11,11,.05);
@@ -28,6 +30,8 @@ document.documentElement.setAttribute("data-theme",d?"dark":"light");})();
     --border:rgba(255,255,255,.10);
     --c-pricing:#3987e5; --c-promo:#d95926; --c-assort:#199e70;
     --good:#0ca30c; --held:#d03b3b;
+    /* dark steps of the same pair, selected against this surface */
+    --up:#3987e5; --down:#e34948;
     --neutral-mark:#55534f;
     --band:rgba(57,135,229,.22);
     --shadow:0 1px 2px rgba(0,0,0,.5),0 4px 14px rgba(0,0,0,.4);
@@ -119,6 +123,23 @@ document.documentElement.setAttribute("data-theme",d?"dark":"light");})();
   table.gate .reason{color:var(--sec)}
   .verdict{display:inline-flex;align-items:center;gap:6px;font-weight:650}
   .bandcell svg{display:block}
+
+  /* ---- compare: two plans, and the bridge between their totals ---- */
+  .cmp-top{display:grid;grid-template-columns:1fr auto 1fr;gap:12px;
+    align-items:center;margin:4px 0 14px}
+  @media(max-width:760px){.cmp-top{grid-template-columns:1fr}}
+  .cmp-plan{border:1px solid var(--border);border-radius:12px;padding:10px 12px;
+    background:var(--page)}
+  .cmp-plan .who{color:var(--muted);font-size:11px;text-transform:uppercase;
+    letter-spacing:.05em}
+  .cmp-plan .name{font-size:14.5px;font-weight:650;margin-top:2px}
+  .cmp-plan .val{font-size:25px;font-weight:700;margin-top:4px}
+  .cmp-plan .note{color:var(--sec);font-size:12.5px;margin-top:2px;
+    font-variant-numeric:tabular-nums}
+  .cmp-arrow{text-align:center;color:var(--sec);font-size:12.5px;padding:0 4px}
+  .cmp-arrow .d{display:block;font-size:16px;font-weight:700;color:var(--ink);
+    font-variant-numeric:tabular-nums}
+  .cmp-bridge svg{width:100%;height:auto;display:block;overflow:visible}
 
   .cards li{margin:0 0 10px;padding-left:6px;line-height:1.45}
   .cards ol{margin:0;padding-left:20px}
@@ -223,6 +244,20 @@ document.documentElement.setAttribute("data-theme",d?"dark":"light");})();
       planning ranges — a screening discipline, not a guarantee.</p>
   </div>
 
+  <div class="card" style="margin-top:16px" id="cmpCard" hidden>
+    <h2>Plan compare — A vs B, and where the €&nbsp;went</h2>
+    <p class="cap" id="cmpCap"></p>
+    <div class="cmp-top">
+      <div class="cmp-plan" id="cmpA"></div>
+      <div class="cmp-arrow" id="cmpDelta"></div>
+      <div class="cmp-plan" id="cmpB"></div>
+    </div>
+    <div class="cmp-bridge" id="cmpBridge"></div>
+    <div class="legend" id="cmpLegend"></div>
+    <div class="tbl-scroll"><table class="gate" id="cmpTbl"></table></div>
+    <p class="fine" id="cmpFine"></p>
+  </div>
+
   <div class="card" style="margin-top:16px">
     <h2>Decision cards</h2>
     <p class="cap">The prescriptive actions, plain-English.</p>
@@ -235,12 +270,13 @@ document.documentElement.setAttribute("data-theme",d?"dark":"light");})();
 
 <script src="data.js"></script>
 <script src="risk.js"></script>
+<script src="compare.js"></script>
 <script>
 "use strict";
 const P = window.PLAN, RESP = window.PROMO_RESPONSE || {},
       ABC = window.ASSORT_BY_CAT || {}, PB = window.PROMO_BUDGET || 40000,
       RISK = window.RISK || {}, GATE = window.GATE || [],
-      RULE = window.GATE_RULE || {};
+      RULE = window.GATE_RULE || {}, CMP = window.COMPARE || {};
 const eur = v => {const r=Math.round(v);
   return "€" + (r===0?0:r).toLocaleString("en-US");};   // r===0 also catches -0
 const eurk = v => "€" + (Math.abs(v)>=1000 ? (v/1000).toFixed(v>=10000?0:1)+"k" : Math.round(v));
@@ -642,6 +678,158 @@ function drawPromo(alloc){
     tbody.appendChild(tr);
   }
   tbl.appendChild(tbody);
+})();
+
+/* ---------------- plan compare: the € bridge from A to B ---------------- */
+(function(){
+  const BR = CMP.bridge || [], LN = CMP.lines || [], S = CMP.summary || {};
+  if(!BR.length) return;
+  document.getElementById("cmpCard").hidden = false;
+  const anchors = BR.filter(s=>s.kind==="anchor"), A = anchors[0],
+        B = anchors[anchors.length-1],
+        drivers = BR.filter(s=>s.kind==="driver");
+  const eurS = v => (v>=0?"+":"−") + eur(Math.abs(v));
+  const s1 = (n,one,many) => n+" "+(n===1?one:many);
+
+  /* the two plans, side by side, with the delta between them */
+  function planTile(id,who,name,total,carried,capital){
+    const h=document.getElementById(id); h.replaceChildren();
+    const mk=(cls,txt)=>{const d=document.createElement("div");d.className=cls;
+      d.textContent=txt;h.appendChild(d);};
+    mk("who",who); mk("name",name); mk("val",eur(total));
+    mk("note",carried+" SKUs · "+eur(capital)+" capital");
+  }
+  planTile("cmpA","Plan A",A.driver,A.running_eur,S.n_carried_a,S.capital_used_a_eur);
+  planTile("cmpB","Plan B",B.driver,B.running_eur,S.n_carried_b,S.capital_used_b_eur);
+  const dl=document.getElementById("cmpDelta"); dl.replaceChildren();
+  const dv=document.createElement("span"); dv.className="d";
+  dv.textContent=eurS(S.delta_eur);
+  dl.append(dv,document.createTextNode("per year"));
+
+  document.getElementById("cmpCap").textContent =
+    "Both plans re-solved through the same MILP + pricing + promo core. Every "+
+    "euro between the two totals is attributed to a named driver — the bridge "+
+    "is summed in cents, so it closes exactly (residual "+
+    eur(S.bridge_residual_eur||0)+")."+
+    (S.gate_draws ? "  Each plan's price moves are re-gated on "+S.gate_draws+
+      " joint draws: "+s1(S.n_verdict_flips,"verdict flips.","verdicts flip.")
+      : "");
+
+  /* the bridge itself — a horizontal waterfall between the two plan totals */
+  const W=1120, rowH=22, gap=14, top=28, n=BR.length;
+  const plotH=n*(rowH+gap), H=top+plotH+40, ml=320, mr=172, pw=W-ml-mr;
+  const lvls=BR.map(s=>s.running_eur);
+  const lo=Math.min(...lvls), hi=Math.max(...lvls),
+        span=Math.max(1,hi-lo), stepEur=5000;
+  const axLo=Math.floor((lo-0.08*span)/stepEur)*stepEur,
+        axHi=Math.ceil((hi+0.08*span)/stepEur)*stepEur;
+  const x=v=>ml+(v-axLo)/(axHi-axLo)*pw;
+  const s=svg(W,H,"chart");
+  for(let i=0;i<=4;i++){const v=axLo+(axHi-axLo)*i/4, gx=x(v);
+    s.appendChild(el("line",{x1:gx,y1:top,x2:gx,y2:top+plotH,class:"gridline"}));
+    s.appendChild(el("text",{x:gx,y:top+plotH+16,"text-anchor":"middle",
+      class:"tick"},eurk(v)));}
+  for(const a of anchors)
+    s.appendChild(el("line",{x1:x(a.running_eur),y1:top-6,x2:x(a.running_eur),
+      y2:top+plotH,stroke:"var(--ink)","stroke-width":1.3,
+      "stroke-dasharray":"4 3",opacity:0.7}));
+  let prevX=null;
+  BR.forEach((st,i)=>{
+    const y0=top+i*(rowH+gap)+gap/2, yc=y0+rowH/2, endX=x(st.running_eur),
+          startX=st.kind==="anchor"?endX:x(st.running_eur-st.delta_eur);
+    if(prevX!=null)
+      s.appendChild(el("line",{x1:prevX,y1:y0-gap,x2:prevX,y2:y0,class:"axis"}));
+    let label;
+    if(st.kind==="anchor"){
+      const cap=el("rect",{x:endX-1.5,y:y0,width:3,height:rowH,rx:1.5,
+        fill:"var(--ink)"});
+      hover(cap,[[eur(st.running_eur),"total / yr"],[st.driver,""]],st.driver);
+      s.appendChild(cap);
+      label=eur(st.running_eur);
+    } else if(Math.abs(st.delta_eur)<0.005){
+      s.appendChild(el("rect",{x:endX-1,y:y0+6,width:2,height:rowH-12,
+        fill:"var(--neutral-mark)"}));
+      label="€0";
+    } else {
+      // a floating step: both ends are data ends, so both are rounded
+      const bar=el("rect",{x:Math.min(startX,endX),y:y0,
+        width:Math.max(1.2,Math.abs(endX-startX)),height:rowH,rx:3,
+        fill:st.delta_eur>0?"var(--up)":"var(--down)"});
+      hover(bar,[[eurS(st.delta_eur),st.driver],
+                 [eur(st.running_eur),"running total"]],st.driver);
+      s.appendChild(bar);
+      label=eurS(st.delta_eur);
+    }
+    s.appendChild(el("text",{x:ml-12,y:yc+4,"text-anchor":"end",
+      class:st.kind==="anchor"?"lblb":"lbl"},st.driver));
+    if(st.kind==="anchor"){
+      s.appendChild(el("text",{x:endX+8,y:yc+4,class:"lblb"},label));
+    }else{
+      const right=endX>=startX;
+      s.appendChild(el("text",{x:right?Math.max(startX,endX)+6
+        :Math.min(startX,endX)-6,y:yc+4,
+        "text-anchor":right?"start":"end",class:"lbl"},label));
+      s.appendChild(el("text",{x:ml+pw+14,y:yc+4,class:"tick"},
+        eur(st.running_eur)));
+    }
+    prevX=endX;
+  });
+  s.appendChild(el("text",{x:ml+pw/2,y:H-8,"text-anchor":"middle",class:"lbl"},
+    "Total expected uplift (€ / year)"));
+  document.getElementById("cmpBridge").appendChild(s);
+
+  const lg=document.getElementById("cmpLegend");
+  const chip=(varName,txt)=>{const c=document.createElement("span");
+    c.className="chip"; const sw=document.createElement("span");
+    sw.className="sw"; sw.style.background="var("+varName+")";
+    c.append(sw,document.createTextNode(txt)); lg.appendChild(c);};
+  chip("--up","adds to the total"); chip("--down","subtracts");
+  const note=document.createElement("span");
+  note.textContent=drivers.length+" named drivers · "+
+    s1(S.n_entered,"SKU enters","SKUs enter")+", "+
+    s1(S.n_left,"leaves","leave")+" · "+
+    s1(S.n_price_changed,"price line changes","price lines change");
+  lg.appendChild(note);
+
+  /* the line-level diff — what actually changed, biggest € first */
+  const tbl=document.getElementById("cmpTbl");
+  const thead=document.createElement("thead"), hr=document.createElement("tr");
+  const cols=[["What",""],["Key",""],["Category",""],["Change",""],
+    ["Plan A","num"],["Plan B","num"],["Δ","num"],["Gate A → B",""]];
+  for(const [t,cls] of cols){const th=document.createElement("th");
+    th.textContent=t; if(cls)th.className=cls; hr.appendChild(th);}
+  thead.appendChild(hr); tbl.appendChild(thead);
+  const tb=document.createElement("tbody");
+  for(const r of LN){
+    const tr=document.createElement("tr");
+    const td=(content,cls)=>{const c=document.createElement("td");
+      if(cls)c.className=cls;
+      if(content instanceof Node)c.appendChild(content); else c.textContent=content;
+      tr.appendChild(c); return c;};
+    td(r.kind); td(r.key); td(r.category,"cat");
+    // repeat the move only when it actually moved
+    td(!r.a_label&&!r.b_label ? r.change
+       : r.a_label===r.b_label ? r.change+" ("+r.a_label+")"
+       : r.change+" "+r.a_label+" → "+r.b_label);
+    td(eur(r.a_eur),"num"); td(eur(r.b_eur),"num"); td(eurS(r.delta_eur),"num");
+    if(r.a_verdict||r.b_verdict){
+      const v=document.createElement("span"); v.className="verdict";
+      const side=k=>{if(!k){v.append(document.createTextNode("—")); return;}
+        const d=document.createElement("span");
+        d.className="vdot "+(k==="accept"?"accept":"hold");
+        v.append(d,document.createTextNode(k));};
+      side(r.a_verdict);
+      v.append(document.createTextNode(" → "));
+      side(r.b_verdict);
+      td(v, r.verdict_flip ? "" : "reason");
+    } else td("","reason");
+    tb.appendChild(tr);
+  }
+  tbl.appendChild(tb);
+  document.getElementById("cmpFine").textContent =
+    "Assortment and price rows carry the SKU's annual price-line €; promo rows "+
+    "carry the category's budget. Illustrative planning ranges on synthetic "+
+    "data — what the model computes under each assumption, not a forecast.";
 })();
 
 /* ---------------- Decision cards ---------------- */

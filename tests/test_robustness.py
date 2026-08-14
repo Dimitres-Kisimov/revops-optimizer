@@ -90,8 +90,41 @@ def test_solve_plan_matches_evaluate():
     assert round(sol.promo.incremental_margin_eur, 2) == r.promo_uplift_eur
     assert round(sol.assortment.milp_uplift_vs_greedy_eur, 2) == r.assortment_uplift_eur
     assert round(sol.total_uplift_eur, 2) == r.total_uplift_eur
-    # the pricing optimizer saw exactly the carried SKUs
+    # the pricing and promo optimizers each saw exactly the carried SKUs
     assert {s.sku for s in sol.price_inputs} == set(sol.assortment.carried)
+    assert {s.sku for s in sol.promo_inputs} == set(sol.assortment.carried)
+
+
+# --------------------------------------------------------------------------- #
+# gating a plan other than the baseline (used by the A/B compare layer)        #
+# --------------------------------------------------------------------------- #
+def test_compose_draw_composes_multipliers_and_sets_levers():
+    base = Scenario("B", demand_mult=0.5, cost_mult=1.08, budget=10_000.0)
+    got = rb.compose_draw(base, "draw7", {"demand_mult": 1.2, "budget": 25_000.0})
+    assert got.name == "draw7"
+    assert got.demand_mult == 0.6           # 0.5 * 1.2 — composed
+    assert got.budget == 25_000.0           # a lever is set outright
+    assert got.cost_mult == 1.08            # untouched fields survive
+
+
+def test_gate_base_defaults_to_the_baseline_plan():
+    """The new ``base`` argument must not move the published gate: passing the
+    Baseline explicitly has to reproduce the default run exactly."""
+    ctx = _ctx()
+    default = analyze(ctx, draws=6)
+    explicit = analyze(ctx, draws=6, base=Scenario("Baseline"))
+    assert [m.__dict__ for m in default.moves] == [m.__dict__ for m in explicit.moves]
+    assert default.draws_total_eur == explicit.draws_total_eur
+
+
+def test_gate_of_another_plan_gates_that_plan_s_moves():
+    ctx = _ctx()
+    base = Scenario("Cost inflation +8%", cost_mult=1.08)
+    res = analyze(ctx, draws=6, base=base)
+    lines = {p.sku: p for p in solve_plan(ctx, base).prices
+             if abs(p.price_change_pct) >= MOVE_THRESHOLD_PCT}
+    assert {m.sku for m in res.moves} == set(lines)
+    assert res.baseline_total_uplift_eur == evaluate(ctx, base).total_uplift_eur
 
 
 # --------------------------------------------------------------------------- #
@@ -215,11 +248,11 @@ def test_draw_loop_hand_checked(monkeypatch):
     carried_sol = PlanSolution(
         assortment=SimpleNamespace(milp_uplift_vs_greedy_eur=0.0),
         prices=[line], promo=SimpleNamespace(incremental_margin_eur=0.0),
-        price_inputs=[s1])
+        price_inputs=[s1], promo_inputs=[s1])
     empty_sol = PlanSolution(
         assortment=SimpleNamespace(milp_uplift_vs_greedy_eur=0.0),
         prices=[], promo=SimpleNamespace(incremental_margin_eur=0.0),
-        price_inputs=[])
+        price_inputs=[], promo_inputs=[])
 
     def fake_solve(ctx, scenario):
         if scenario.name == "Baseline" or int(scenario.name[4:]) % 2 == 0:

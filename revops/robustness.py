@@ -147,6 +147,18 @@ def _pct(a: np.ndarray, q: float) -> float:
     return float(np.percentile(a, q, method="linear"))
 
 
+def compose_draw(base: Scenario, name: str, draw: dict[str, float]) -> Scenario:
+    """Apply one Monte-Carlo draw to the plan being gated. A multiplier field
+    (``*_mult``) *composes* with the base plan's own perturbation, so gating a
+    perturbed plan draws around **that** plan rather than around the baseline;
+    any other lever the draw names is set outright. With the default
+    ``Baseline`` base (every multiplier 1.0) composition is the identity, which
+    is why the published gate is unchanged."""
+    kw = {f: (getattr(base, f) * v if f.endswith("_mult") else v)
+          for f, v in draw.items()}
+    return replace(base, name=name, **kw)
+
+
 def _frozen_move_uplift(p0: float, cost: float, q0: float, e: float,
                         price_frozen: float) -> float:
     """Monthly € of charging ``price_frozen`` instead of ``p0`` under the given
@@ -163,11 +175,17 @@ def _frozen_move_uplift(p0: float, cost: float, q0: float, e: float,
 def analyze(ctx: PredictContext,
             draws: int = DEFAULT_DRAWS,
             drivers: tuple[RiskDriver, ...] = DEFAULT_RISK_DRIVERS,
-            seed: int = SEED) -> RobustnessResult:
+            seed: int = SEED,
+            base: Scenario | None = None) -> RobustnessResult:
     """Replay the risk band's joint draws with per-SKU detail and gate every
     baseline price move. Deterministic given ``seed``/``draws``; with the
     default arguments the draws are byte-for-byte the ones ``simulate`` reports
-    (a test pins the two layers together)."""
+    (a test pins the two layers together).
+
+    ``base`` is the plan whose moves are gated — the unperturbed ``Baseline``
+    unless given. Passing another scenario (as the A/B compare layer does) gates
+    *that* plan's own moves, with each draw composed onto it by
+    ``compose_draw``."""
     n = int(draws)
     if n < 1:
         raise ValueError("draws must be >= 1")
@@ -178,7 +196,7 @@ def analyze(ctx: PredictContext,
             for j, dr in enumerate(drivers)]
     fields = [dr.field for dr in drivers]
 
-    base = Scenario("Baseline")
+    base = Scenario("Baseline") if base is None else base
     base_sol = solve_plan(ctx, base)
     category_of = {s.sku: s.category for s in ctx.skus}
 
@@ -209,7 +227,7 @@ def analyze(ctx: PredictContext,
     tot = np.empty(n)
     for i in range(n):
         kw = {fields[j]: float(cols[j][i]) for j in range(d)}
-        sol = solve_plan(ctx, replace(base, name=f"draw{i}", **kw))
+        sol = solve_plan(ctx, compose_draw(base, f"draw{i}", kw))
         tot[i] = sol.total_uplift_eur
         inputs = {s.sku: s for s in sol.price_inputs}
         for line in sol.prices:

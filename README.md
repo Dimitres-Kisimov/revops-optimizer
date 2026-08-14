@@ -177,17 +177,21 @@ python -m revops --quiet          # headline plan + decision cards
 python -m revops.scenario --quiet # scenario library + sensitivity tornado (CSV + SVG)
 python -m revops.simulate --quiet # joint Monte-Carlo uplift risk band (CSV + SVG; ~a few min)
 python -m revops.robustness --quiet # accept/hold gate on every price move (CSV + SVG; ~a few min)
+python -m revops.compare --quiet  # plan A vs plan B + the € bridge (CSV + SVG; ~a few min)
 python -m revops.report           # deliverables/ (json, xlsx, pdf, pptx, csv)
 python powerbi/build_star.py      # powerbi/data/ star-schema CSVs
-python web/build_data.py          # web/data.js + web/risk.js → open web/index.html offline
-pytest -q                         # 69 tests, ~45s
+python web/build_data.py          # web/data.js + risk.js + compare.js → open web/index.html
+pytest -q                         # 91 tests, ~52s
 ```
 
 Knobs: `--budget`, `--shelf-capacity-m3`, `--service-level`, `--promo-budget`,
 `--price-guardrail`, `--json out.json`. The simulator takes `--draws N` (default
 256) and `--hurdle EUR` (probability the outcome clears a target; defaults to the
 headline point estimate); the robustness gate takes the same `--draws N`
-(default 256, matching the simulator so the two layers share draws).
+(default 256, matching the simulator so the two layers share draws). The compare
+takes `--a NAME --b NAME` (any two scenarios from the library) and the same
+`--draws N`, which it spends re-gating **both** plans' price moves (`--draws 0`
+skips the gate and leaves the verdict columns empty).
 
 ## What comes out
 
@@ -202,7 +206,12 @@ headline point estimate); the robustness gate takes the same `--draws N`
   joint Monte-Carlo risk band — `uplift_simulation.csv` (a tall, DAX-ready P10/
   P50/P90 + VaR/CVaR summary) and a hand-drawn `uplift_distribution.svg` — and
   the per-move decision gate — `price_move_robustness.csv` (one accept/hold row
-  per recommended price move) and a hand-drawn `price_move_robustness.svg`.
+  per recommended price move) and a hand-drawn `price_move_robustness.svg` — and
+  the A/B compare pack: `plan_compare_summary.csv` (tall, DAX-ready),
+  `plan_compare_bridge.csv` (the € reconciliation, anchors included),
+  `plan_compare_lines.csv` (which SKUs enter/leave, which prices change, whether
+  the gate verdict flips, how promo is reallocated) and a hand-drawn
+  `plan_compare.svg`.
 - **`powerbi/`** — a star schema (`fact_prescription` + `dim_sku/category/date` +
   a scalar KPI table) with the KPIs written as real DAX, and a build spec for the
   three report pages. Run the simulator first and it also emits a disconnected
@@ -212,8 +221,9 @@ headline point estimate); the robustness gate takes the same `--draws N`
 - **`web/index.html`** — a dependency-free dashboard (hand-drawn SVG charts,
   light/dark, a promo what-if slider that re-solves the concave allocation in the
   browser; the headline € is shown beside its P10–P90 band and the accept/hold
-  gate table, read verbatim from the committed CSVs via `web/risk.js`). Opens
-  straight off disk.
+  gate table, and a **compare panel** puts two plans side by side with the €
+  bridge and the line-by-line diff — all read verbatim from the committed CSVs
+  via `web/risk.js` and `web/compare.js`). Opens straight off disk.
 
 The [`docs/USE_CASE.md`](docs/USE_CASE.md) walks the whole quarterly decision as a
 narrative.
@@ -253,6 +263,15 @@ narrative.
   fitted quantities. A verdict is a screening discipline on synthetic data, not
   a guarantee that an accepted move will earn its € (or that a held one would
   not have).
+- **The A/B bridge reconciles exactly, but two of its drivers are *ordered*.**
+  Splitting a shared SKU's Δ into "the world moved" and "we moved the price" is a
+  sequential attribution — freeze plan A's published price, move the conditions
+  to B's, then let the price move — so it closes to the cent, but a different
+  order would hand the interaction term to the other driver. The assortment gap
+  moves as one line because it is a difference of two optimization objectives
+  over different subsets and genuinely does not decompose per SKU; I'd rather
+  ship it whole than invent per-SKU drivers. A verdict flip in the compare
+  inherits every assumption the gate above does.
 
 ## A note on fit
 

@@ -1,0 +1,9 @@
+order,driver,kind,delta_eur,running_eur
+0,Baseline,anchor,0.0,159966.19
+1,Pricing - price action (same SKUs),driver,5.4,159971.59
+2,Pricing - changed conditions (frozen price),driver,7382.88,167354.47
+3,Pricing - assortment mix (SKUs in/out),driver,-264.96,167089.51
+4,Promo - budget change,driver,0.0,167089.51
+5,Promo - response mix (carried set),driver,-3707.02,163382.49
+6,Assortment - MILP-vs-greedy gap,driver,-23895.2,139487.29
+7,Cost inflation +8%,anchor,0.0,139487.29

@@ -48,6 +48,9 @@ jobs:
       - name: Smoke — joint Monte-Carlo risk band (few draws for speed)
         run: python -m revops.simulate --quiet --draws 24
 
+      - name: Smoke — plan compare & € bridge (few draws for speed)
+        run: python -m revops.compare --quiet --draws 8
+
       - name: Build Power BI star schema
         run: python powerbi/build_star.py
 
@@ -71,6 +74,10 @@ jobs:
               "deliverables/scenario_summary.csv",
               "deliverables/sensitivity_tornado.csv",
               "deliverables/sensitivity_tornado.svg",
+              "deliverables/plan_compare_summary.csv",
+              "deliverables/plan_compare_bridge.csv",
+              "deliverables/plan_compare_lines.csv",
+              "deliverables/plan_compare.svg",
               "powerbi/data/fact_prescription.csv",
               "powerbi/data/dim_sku.csv",
               "powerbi/data/dim_category.csv",
@@ -87,4 +94,15 @@ jobs:
           assert up["assortment_milp_vs_greedy_eur"] > 0, "MILP did not beat greedy"
           print("OK — total uplift EUR %.0f, MILP-vs-greedy EUR %.0f"
                 % (up["total_expected_uplift_eur"], up["assortment_milp_vs_greedy_eur"]))
+
+          # the compare bridge must reconcile exactly in the shipped CSV itself
+          import csv
+          rows = list(csv.DictReader(
+              Path("deliverables/plan_compare_bridge.csv").open(encoding="utf-8")))
+          cents = lambda v: int(round(float(v) * 100))
+          a, b = rows[0], rows[-1]
+          assert cents(a["running_eur"]) + sum(cents(r["delta_eur"]) for r in rows) \
+              == cents(b["running_eur"]), "plan-compare bridge does not reconcile"
+          print("OK — bridge %s -> %s reconciles exactly"
+                % (a["driver"], b["driver"]))
           PY

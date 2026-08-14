@@ -304,3 +304,79 @@ Power BI star as `fact_price_robustness`, §11 of the DAX pack) and a hand-drawn
 data under illustrative planning ranges — a screening discipline, not a
 guarantee** that an accepted move will earn its € (or that a held one would not
 have).
+
+### Two plans side by side — the € bridge
+
+Everything above answers *how big is the number*. `revops/compare.py` answers the
+next question a planner asks with two plans on the desk: **what actually differs,
+and why is B's total what it is?** Both plans are solved through the same
+`scenario.solve_plan` core (no second model, no re-derived perturbation), and the
+diff is reported at three grains: which SKUs **enter** or **leave** the range,
+which **price moves** change (and — when the gate is run on both plans — whether
+the accept/hold **verdict flips**), and how the **promo budget** is reallocated.
+
+The centrepiece is a **€ bridge in which every euro is attributed to a named
+driver**, summed in *integer cents* so it reconciles by construction rather than
+to a tolerance:
+
+```
+total_A
+  + Pricing - price action (same SKUs)            the effect of recommending a
+                                                  different price
+  + Pricing - changed conditions (frozen price)   plan A's published price held
+                                                  fixed while cost/demand/
+                                                  elasticity move to B's
+  + Pricing - assortment mix (SKUs in/out)        price-line € carried in/out by
+                                                  the range change
+  + Promo - budget change                         A's carried set re-solved at
+                                                  B's promo budget
+  + Promo - response mix (carried set)            the rest: the response curves
+                                                  themselves moved
+  + Assortment - MILP-vs-greedy gap               the headline gap, moved whole
+= total_B
+```
+
+Two of those are genuine counterfactual re-solves, not apportionments: the
+*conditions* term reuses the robustness gate's own frozen-action arithmetic
+(`_frozen_move_uplift` — the published price, the drawn world), and the *promo
+budget* term re-runs the concave allocation on **A's** carried set at **B's**
+budget. The *action* term is what remains of a shared SKU's Δ once the frozen
+term is removed, so it also absorbs the cent-rounding of the published price
+(≤ €0.12/SKU/yr — the two terms always add up to the SKU's exact published Δ).
+
+The assortment gap moves as **one** term on purpose: it is a difference of two
+optimization objectives over different subsets, so it does not decompose per SKU.
+The optimized and greedy margins ship beside it as context instead of being split
+into invented drivers.
+
+Worked example — the published pair (`Baseline` vs `Cost inflation +8%`):
+
+```
+Baseline                                                        EUR 159,966.19
+  Pricing - price action (same SKUs)                    +5.40
+  Pricing - changed conditions (frozen price)       +7,382.88
+  Pricing - assortment mix (SKUs in/out)              -264.96
+  Promo - budget change                                 +0.00
+  Promo - response mix (carried set)                -3,707.02
+  Assortment - MILP-vs-greedy gap                  -23,895.20
+Cost inflation +8%                                              EUR 139,487.29
+                                                    (residual        EUR 0.00)
+```
+
+Read it and the story is not "costs went up, everything got worse": the pricing
+lever *gains* €7.4k (input-cost inflation pushes the Lerner optimum further from
+the current price, so there is more margin to reclaim inside the same guardrail),
+while the range decision loses €23.9k. A single delta of −€20,479 hides both.
+
+Degenerate cases are pinned by tests: a plan against itself yields an all-zero
+bridge and not one changed line; a compare that moves exactly one lever puts the
+entire difference on that lever's driver (a promo-budget-only compare reproduces
+the scenario library's own delta to the cent); and a capital-only compare leaves
+both same-SKU pricing drivers at exactly zero, because capital cannot change a
+carried SKU's price maths. Deliverables: `deliverables/plan_compare_summary.csv`
+(tall, DAX-ready), `plan_compare_bridge.csv` (the reconciliation, anchors
+included), `plan_compare_lines.csv` (SKU/category grain, with each row's share of
+the two pricing drivers so the CSV audits the bridge it ships with) and a
+hand-drawn `plan_compare.svg`. The comparison is **illustrative planning ranges
+on synthetic data — what the model computes under each assumption, not a
+forecast**.

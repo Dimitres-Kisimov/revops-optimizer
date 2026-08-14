@@ -122,12 +122,15 @@ class PlanSolution:
     reads the per-SKU detail directly, so both layers share one solved plan.
     ``price_inputs`` are the perturbed carried SKUs exactly as the pricing
     optimizer saw them (forecast demand, estimated elasticity, perturbed cost),
-    so downstream layers can re-price *fixed* actions under the same conditions
-    without re-deriving the perturbation arithmetic."""
+    and ``promo_inputs`` the perturbed carried SKUs exactly as the promo
+    optimizer saw them (risk-haircut demand), so downstream layers can re-solve
+    *fixed* actions under the same conditions without re-deriving the
+    perturbation arithmetic."""
     assortment: AssortmentResult
     prices: list[PriceLine]
     promo: PromoResult
     price_inputs: list[SKU]
+    promo_inputs: list[SKU]
 
     @property
     def pricing_uplift_annual_eur(self) -> float:
@@ -163,7 +166,7 @@ def solve_plan(ctx: PredictContext, scenario: Scenario) -> PlanSolution:
     prices = optimize_prices(carried_price, scenario.price_guardrail)
     promo = optimize_promo(carried_ops, scenario.promo_budget)
     return PlanSolution(assortment=assort, prices=prices, promo=promo,
-                        price_inputs=carried_price)
+                        price_inputs=carried_price, promo_inputs=carried_ops)
 
 
 def evaluate(ctx: PredictContext, scenario: Scenario) -> ScenarioResult:
